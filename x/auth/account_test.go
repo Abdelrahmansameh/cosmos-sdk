@@ -480,3 +480,35 @@ func TestTrackUndelegationDelVestingAcc(t *testing.T) {
 	require.Equal(t, sdk.Coins{sdk.NewInt64Coin(stakeDenom, 25)}, dva.DelegatedVesting)
 	require.Equal(t, sdk.Coins{sdk.NewInt64Coin(feeDenom, 1000), sdk.NewInt64Coin(stakeDenom, 75)}, dva.GetCoins())
 }
+
+func TestSubKey(t *testing.T) {
+    _, pub1, addr1 := keyPubAddr()
+    _, pub2, addr2 := keyPubAddr()
+    acc := NewSubKeyAccountWithAddress(addr1)
+
+    // Check correct address (set) and PubKey (none)
+    require.EqualValues(t, addr1, acc.GetAddress())
+    require.EqualValues(t, nil, acc.GetPubKey())
+
+    // Check not able to override address
+    err := acc.SetAddress(addr2)
+    require.NotNil(t, err)
+    require.EqualValues(t, addr1, acc.GetAddress())
+
+    // Set PubKey
+    err = acc.SetPubKey(pub1)
+    require.Nil(t, err)
+    require.Equal(t, pub1, acc.GetPubKey())
+
+    // Check able to override pubkey
+    err = acc.SetPubKey(pub2)
+    require.Nil(t, err)
+    require.Equal(t, pub2, acc.GetPubKey())
+
+    // Check set address on empty
+    acc2 := SubKeyAccount{}
+    err = acc2.SetAddress(addr2)
+    require.Nil(t, err)
+    require.EqualValues(t, addr2, acc2.GetAddress())
+}
+

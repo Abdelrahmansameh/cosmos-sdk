@@ -1,0 +1,2089 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/cosmos/cosmos-sdk/x/auth/account.go (64.2%)</option>
+				
+				<option value="file1">github.com/cosmos/cosmos-sdk/x/auth/ante.go (85.0%)</option>
+				
+				<option value="file2">github.com/cosmos/cosmos-sdk/x/auth/codec.go (100.0%)</option>
+				
+				<option value="file3">github.com/cosmos/cosmos-sdk/x/auth/feekeeper.go (100.0%)</option>
+				
+				<option value="file4">github.com/cosmos/cosmos-sdk/x/auth/genesis.go (0.0%)</option>
+				
+				<option value="file5">github.com/cosmos/cosmos-sdk/x/auth/keeper.go (48.7%)</option>
+				
+				<option value="file6">github.com/cosmos/cosmos-sdk/x/auth/params.go (21.4%)</option>
+				
+				<option value="file7">github.com/cosmos/cosmos-sdk/x/auth/querier.go (66.7%)</option>
+				
+				<option value="file8">github.com/cosmos/cosmos-sdk/x/auth/stdtx.go (81.4%)</option>
+				
+				<option value="file9">github.com/cosmos/cosmos-sdk/x/auth/test_utils.go (94.2%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package auth
+
+import (
+        "errors"
+        "fmt"
+        "time"
+
+        "github.com/tendermint/tendermint/crypto"
+
+        sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
+// Account is an interface used to store coins at a given address within state.
+// It presumes a notion of sequence numbers for replay protection,
+// a notion of account numbers for replay protection for previously pruned accounts,
+// and a pubkey for authentication purposes.
+//
+// Many complex conditions can be used in the concrete struct which implements Account.
+type Account interface {
+        GetAddress() sdk.AccAddress
+        SetAddress(sdk.AccAddress) error // errors if already set.
+
+        GetPubKey() crypto.PubKey // can return nil.
+        SetPubKey(crypto.PubKey) error
+
+        GetAccountNumber() uint64
+        SetAccountNumber(uint64) error
+
+        GetSequence() uint64
+        SetSequence(uint64) error
+
+        GetCoins() sdk.Coins
+        SetCoins(sdk.Coins) error
+
+        // Calculates the amount of coins that can be sent to other accounts given
+        // the current time.
+        SpendableCoins(blockTime time.Time) sdk.Coins
+
+        // Ensure that account implements stringer
+        String() string
+}
+
+// VestingAccount defines an account type that vests coins via a vesting schedule.
+type VestingAccount interface {
+        Account
+
+        // Delegation and undelegation accounting that returns the resulting base
+        // coins amount.
+        TrackDelegation(blockTime time.Time, amount sdk.Coins)
+        TrackUndelegation(amount sdk.Coins)
+
+        GetVestedCoins(blockTime time.Time) sdk.Coins
+        GetVestingCoins(blockTime time.Time) sdk.Coins
+
+        GetStartTime() int64
+        GetEndTime() int64
+
+        GetOriginalVesting() sdk.Coins
+        GetDelegatedFree() sdk.Coins
+        GetDelegatedVesting() sdk.Coins
+}
+
+// AccountDecoder unmarshals account bytes
+// TODO: Think about removing
+type AccountDecoder func(accountBytes []byte) (Account, error)
+
+//-----------------------------------------------------------------------------
+// BaseAccount
+
+var _ Account = (*BaseAccount)(nil)
+
+// BaseAccount - a base account structure.
+// This can be extended by embedding within in your AppAccount.
+// However one doesn't have to use BaseAccount as long as your struct
+// implements Account.
+type BaseAccount struct {
+        Address       sdk.AccAddress `json:"address"`
+        Coins         sdk.Coins      `json:"coins"`
+        PubKey        crypto.PubKey  `json:"public_key"`
+        AccountNumber uint64         `json:"account_number"`
+        Sequence      uint64         `json:"sequence"`
+}
+
+// String implements fmt.Stringer
+func (acc BaseAccount) String() string <span class="cov0" title="0">{
+        var pubkey string
+
+        if acc.PubKey != nil </span><span class="cov0" title="0">{
+                pubkey = sdk.MustBech32ifyAccPub(acc.PubKey)
+        }</span>
+
+        <span class="cov0" title="0">return fmt.Sprintf(`Account:
+  Address:       %s
+  Pubkey:        %s
+  Coins:         %s
+  AccountNumber: %d
+  Sequence:      %d`,
+                acc.Address, pubkey, acc.Coins, acc.AccountNumber, acc.Sequence,
+        )</span>
+}
+
+// ProtoBaseAccount - a prototype function for BaseAccount
+func ProtoBaseAccount() Account <span class="cov8" title="1">{
+        return &amp;BaseAccount{}
+}</span>
+
+// NewBaseAccountWithAddress - returns a new base account with a given address
+func NewBaseAccountWithAddress(addr sdk.AccAddress) BaseAccount <span class="cov8" title="1">{
+        return BaseAccount{
+                Address: addr,
+        }
+}</span>
+
+// GetAddress - Implements sdk.Account.
+func (acc BaseAccount) GetAddress() sdk.AccAddress <span class="cov8" title="1">{
+        return acc.Address
+}</span>
+
+// SetAddress - Implements sdk.Account.
+func (acc *BaseAccount) SetAddress(addr sdk.AccAddress) error <span class="cov8" title="1">{
+        if len(acc.Address) != 0 </span><span class="cov8" title="1">{
+                return errors.New("cannot override BaseAccount address")
+        }</span>
+        <span class="cov8" title="1">acc.Address = addr
+        return nil</span>
+}
+
+// GetPubKey - Implements sdk.Account.
+func (acc BaseAccount) GetPubKey() crypto.PubKey <span class="cov8" title="1">{
+        return acc.PubKey
+}</span>
+
+// SetPubKey - Implements sdk.Account.
+func (acc *BaseAccount) SetPubKey(pubKey crypto.PubKey) error <span class="cov8" title="1">{
+        acc.PubKey = pubKey
+        return nil
+}</span>
+
+// GetCoins - Implements sdk.Account.
+func (acc *BaseAccount) GetCoins() sdk.Coins <span class="cov8" title="1">{
+        return acc.Coins
+}</span>
+
+// SetCoins - Implements sdk.Account.
+func (acc *BaseAccount) SetCoins(coins sdk.Coins) error <span class="cov8" title="1">{
+        acc.Coins = coins
+        return nil
+}</span>
+
+// GetAccountNumber - Implements Account
+func (acc *BaseAccount) GetAccountNumber() uint64 <span class="cov8" title="1">{
+        return acc.AccountNumber
+}</span>
+
+// SetAccountNumber - Implements Account
+func (acc *BaseAccount) SetAccountNumber(accNumber uint64) error <span class="cov8" title="1">{
+        acc.AccountNumber = accNumber
+        return nil
+}</span>
+
+// GetSequence - Implements sdk.Account.
+func (acc *BaseAccount) GetSequence() uint64 <span class="cov8" title="1">{
+        return acc.Sequence
+}</span>
+
+// SetSequence - Implements sdk.Account.
+func (acc *BaseAccount) SetSequence(seq uint64) error <span class="cov8" title="1">{
+        acc.Sequence = seq
+        return nil
+}</span>
+
+// SpendableCoins returns the total set of spendable coins. For a base account,
+// this is simply the base coins.
+func (acc *BaseAccount) SpendableCoins(_ time.Time) sdk.Coins <span class="cov8" title="1">{
+        return acc.GetCoins()
+}</span>
+
+//-----------------------------------------------------------------------------
+// Base Vesting Account
+
+// BaseVestingAccount implements the VestingAccount interface. It contains all
+// the necessary fields needed for any vesting account implementation.
+type BaseVestingAccount struct {
+        *BaseAccount
+
+        OriginalVesting  sdk.Coins `json:"original_vesting"`  // coins in account upon initialization
+        DelegatedFree    sdk.Coins `json:"delegated_free"`    // coins that are vested and delegated
+        DelegatedVesting sdk.Coins `json:"delegated_vesting"` // coins that vesting and delegated
+
+        EndTime int64 `json:"end_time"` // when the coins become unlocked
+}
+
+// String implements fmt.Stringer
+func (bva BaseVestingAccount) String() string <span class="cov0" title="0">{
+        var pubkey string
+
+        if bva.PubKey != nil </span><span class="cov0" title="0">{
+                pubkey = sdk.MustBech32ifyAccPub(bva.PubKey)
+        }</span>
+
+        <span class="cov0" title="0">return fmt.Sprintf(`Vesting Account:
+  Address:          %s
+  Pubkey:           %s
+  Coins:            %s
+  AccountNumber:    %d
+  Sequence:         %d
+  OriginalVesting:  %s
+  DelegatedFree:    %s
+  DelegatedVesting: %s
+  EndTime:          %d `,
+                bva.Address, pubkey, bva.Coins, bva.AccountNumber, bva.Sequence,
+                bva.OriginalVesting, bva.DelegatedFree, bva.DelegatedVesting, bva.EndTime,
+        )</span>
+}
+
+// spendableCoins returns all the spendable coins for a vesting account given a
+// set of vesting coins.
+//
+// CONTRACT: The account's coins, delegated vesting coins, vestingCoins must be
+// sorted.
+func (bva BaseVestingAccount) spendableCoins(vestingCoins sdk.Coins) sdk.Coins <span class="cov8" title="1">{
+        var spendableCoins sdk.Coins
+        bc := bva.GetCoins()
+
+        for _, coin := range bc </span><span class="cov8" title="1">{
+                // zip/lineup all coins by their denomination to provide O(n) time
+                baseAmt := coin.Amount
+                vestingAmt := vestingCoins.AmountOf(coin.Denom)
+                delVestingAmt := bva.DelegatedVesting.AmountOf(coin.Denom)
+
+                // compute min((BC + DV) - V, BC) per the specification
+                min := sdk.MinInt(baseAmt.Add(delVestingAmt).Sub(vestingAmt), baseAmt)
+                spendableCoin := sdk.NewCoin(coin.Denom, min)
+
+                if !spendableCoin.IsZero() </span><span class="cov8" title="1">{
+                        spendableCoins = spendableCoins.Add(sdk.Coins{spendableCoin})
+                }</span>
+        }
+
+        <span class="cov8" title="1">return spendableCoins</span>
+}
+
+// trackDelegation tracks a delegation amount for any given vesting account type
+// given the amount of coins currently vesting. It returns the resulting base
+// coins.
+//
+// CONTRACT: The account's coins, delegation coins, vesting coins, and delegated
+// vesting coins must be sorted.
+func (bva *BaseVestingAccount) trackDelegation(vestingCoins, amount sdk.Coins) <span class="cov8" title="1">{
+        bc := bva.GetCoins()
+
+        for _, coin := range amount </span><span class="cov8" title="1">{
+                // zip/lineup all coins by their denomination to provide O(n) time
+
+                baseAmt := bc.AmountOf(coin.Denom)
+                vestingAmt := vestingCoins.AmountOf(coin.Denom)
+                delVestingAmt := bva.DelegatedVesting.AmountOf(coin.Denom)
+
+                // Panic if the delegation amount is zero or if the base coins does not
+                // exceed the desired delegation amount.
+                if coin.Amount.IsZero() || baseAmt.LT(coin.Amount) </span><span class="cov8" title="1">{
+                        panic("delegation attempt with zero coins or insufficient funds")</span>
+                }
+
+                // compute x and y per the specification, where:
+                // X := min(max(V - DV, 0), D)
+                // Y := D - X
+                <span class="cov8" title="1">x := sdk.MinInt(sdk.MaxInt(vestingAmt.Sub(delVestingAmt), sdk.ZeroInt()), coin.Amount)
+                y := coin.Amount.Sub(x)
+
+                if !x.IsZero() </span><span class="cov8" title="1">{
+                        xCoin := sdk.NewCoin(coin.Denom, x)
+                        bva.DelegatedVesting = bva.DelegatedVesting.Add(sdk.Coins{xCoin})
+                }</span>
+
+                <span class="cov8" title="1">if !y.IsZero() </span><span class="cov8" title="1">{
+                        yCoin := sdk.NewCoin(coin.Denom, y)
+                        bva.DelegatedFree = bva.DelegatedFree.Add(sdk.Coins{yCoin})
+                }</span>
+
+                <span class="cov8" title="1">bva.Coins = bva.Coins.Sub(sdk.Coins{coin})</span>
+        }
+}
+
+// TrackUndelegation tracks an undelegation amount by setting the necessary
+// values by which delegated vesting and delegated vesting need to decrease and
+// by which amount the base coins need to increase. The resulting base coins are
+// returned.
+//
+// NOTE: The undelegation (bond refund) amount may exceed the delegated
+// vesting (bond) amount due to the way undelegation truncates the bond refund,
+// which can increase the validator's exchange rate (tokens/shares) slightly if
+// the undelegated tokens are non-integral.
+//
+// CONTRACT: The account's coins and undelegation coins must be sorted.
+func (bva *BaseVestingAccount) TrackUndelegation(amount sdk.Coins) <span class="cov8" title="1">{
+        for _, coin := range amount </span><span class="cov8" title="1">{
+                // panic if the undelegation amount is zero
+                if coin.Amount.IsZero() </span><span class="cov8" title="1">{
+                        panic("undelegation attempt with zero coins")</span>
+                }
+                <span class="cov8" title="1">delegatedFree := bva.DelegatedFree.AmountOf(coin.Denom)
+                delegatedVesting := bva.DelegatedVesting.AmountOf(coin.Denom)
+
+                // compute x and y per the specification, where:
+                // X := min(DF, D)
+                // Y := min(DV, D - X)
+                x := sdk.MinInt(delegatedFree, coin.Amount)
+                y := sdk.MinInt(delegatedVesting, coin.Amount.Sub(x))
+
+                if !x.IsZero() </span><span class="cov8" title="1">{
+                        xCoin := sdk.NewCoin(coin.Denom, x)
+                        bva.DelegatedFree = bva.DelegatedFree.Sub(sdk.Coins{xCoin})
+                }</span>
+
+                <span class="cov8" title="1">if !y.IsZero() </span><span class="cov8" title="1">{
+                        yCoin := sdk.NewCoin(coin.Denom, y)
+                        bva.DelegatedVesting = bva.DelegatedVesting.Sub(sdk.Coins{yCoin})
+                }</span>
+
+                <span class="cov8" title="1">bva.Coins = bva.Coins.Add(sdk.Coins{coin})</span>
+        }
+}
+
+// GetOriginalVesting returns a vesting account's original vesting amount
+func (bva BaseVestingAccount) GetOriginalVesting() sdk.Coins <span class="cov0" title="0">{
+        return bva.OriginalVesting
+}</span>
+
+// GetDelegatedFree returns a vesting account's delegation amount that is not
+// vesting.
+func (bva BaseVestingAccount) GetDelegatedFree() sdk.Coins <span class="cov0" title="0">{
+        return bva.DelegatedFree
+}</span>
+
+// GetDelegatedVesting returns a vesting account's delegation amount that is
+// still vesting.
+func (bva BaseVestingAccount) GetDelegatedVesting() sdk.Coins <span class="cov0" title="0">{
+        return bva.DelegatedVesting
+}</span>
+
+//-----------------------------------------------------------------------------
+// Continuous Vesting Account
+
+var _ VestingAccount = (*ContinuousVestingAccount)(nil)
+
+// ContinuousVestingAccount implements the VestingAccount interface. It
+// continuously vests by unlocking coins linearly with respect to time.
+type ContinuousVestingAccount struct {
+        *BaseVestingAccount
+
+        StartTime int64 `json:"start_time"` // when the coins start to vest
+}
+
+// NewContinuousVestingAccount returns a new ContinuousVestingAccount
+func NewContinuousVestingAccount(
+        baseAcc *BaseAccount, StartTime, EndTime int64,
+) *ContinuousVestingAccount <span class="cov8" title="1">{
+
+        baseVestingAcc := &amp;BaseVestingAccount{
+                BaseAccount:     baseAcc,
+                OriginalVesting: baseAcc.Coins,
+                EndTime:         EndTime,
+        }
+
+        return &amp;ContinuousVestingAccount{
+                StartTime:          StartTime,
+                BaseVestingAccount: baseVestingAcc,
+        }
+}</span>
+
+func (cva ContinuousVestingAccount) String() string <span class="cov0" title="0">{
+        var pubkey string
+
+        if cva.PubKey != nil </span><span class="cov0" title="0">{
+                pubkey = sdk.MustBech32ifyAccPub(cva.PubKey)
+        }</span>
+
+        <span class="cov0" title="0">return fmt.Sprintf(`Continuous Vesting Account:
+  Address:          %s
+  Pubkey:           %s
+  Coins:            %s
+  AccountNumber:    %d
+  Sequence:         %d
+  OriginalVesting:  %s
+  DelegatedFree:    %s
+  DelegatedVesting: %s
+  StartTime:        %d
+  EndTime:          %d `,
+                cva.Address, pubkey, cva.Coins, cva.AccountNumber, cva.Sequence,
+                cva.OriginalVesting, cva.DelegatedFree, cva.DelegatedVesting,
+                cva.StartTime, cva.EndTime,
+        )</span>
+}
+
+// GetVestedCoins returns the total number of vested coins. If no coins are vested,
+// nil is returned.
+func (cva ContinuousVestingAccount) GetVestedCoins(blockTime time.Time) sdk.Coins <span class="cov8" title="1">{
+        var vestedCoins sdk.Coins
+
+        // We must handle the case where the start time for a vesting account has
+        // been set into the future or when the start of the chain is not exactly
+        // known.
+        if blockTime.Unix() &lt;= cva.StartTime </span><span class="cov8" title="1">{
+                return vestedCoins
+        }</span> else<span class="cov8" title="1"> if blockTime.Unix() &gt;= cva.EndTime </span><span class="cov8" title="1">{
+                return cva.OriginalVesting
+        }</span>
+
+        // calculate the vesting scalar
+        <span class="cov8" title="1">x := blockTime.Unix() - cva.StartTime
+        y := cva.EndTime - cva.StartTime
+        s := sdk.NewDec(x).Quo(sdk.NewDec(y))
+
+        for _, ovc := range cva.OriginalVesting </span><span class="cov8" title="1">{
+                vestedAmt := ovc.Amount.ToDec().Mul(s).RoundInt()
+                vestedCoins = append(vestedCoins, sdk.NewCoin(ovc.Denom, vestedAmt))
+        }</span>
+
+        <span class="cov8" title="1">return vestedCoins</span>
+}
+
+// GetVestingCoins returns the total number of vesting coins. If no coins are
+// vesting, nil is returned.
+func (cva ContinuousVestingAccount) GetVestingCoins(blockTime time.Time) sdk.Coins <span class="cov8" title="1">{
+        return cva.OriginalVesting.Sub(cva.GetVestedCoins(blockTime))
+}</span>
+
+// SpendableCoins returns the total number of spendable coins per denom for a
+// continuous vesting account.
+func (cva ContinuousVestingAccount) SpendableCoins(blockTime time.Time) sdk.Coins <span class="cov8" title="1">{
+        return cva.spendableCoins(cva.GetVestingCoins(blockTime))
+}</span>
+
+// TrackDelegation tracks a desired delegation amount by setting the appropriate
+// values for the amount of delegated vesting, delegated free, and reducing the
+// overall amount of base coins.
+func (cva *ContinuousVestingAccount) TrackDelegation(blockTime time.Time, amount sdk.Coins) <span class="cov8" title="1">{
+        cva.trackDelegation(cva.GetVestingCoins(blockTime), amount)
+}</span>
+
+// GetStartTime returns the time when vesting starts for a continuous vesting
+// account.
+func (cva *ContinuousVestingAccount) GetStartTime() int64 <span class="cov0" title="0">{
+        return cva.StartTime
+}</span>
+
+// GetEndTime returns the time when vesting ends for a continuous vesting account.
+func (cva *ContinuousVestingAccount) GetEndTime() int64 <span class="cov0" title="0">{
+        return cva.EndTime
+}</span>
+
+//-----------------------------------------------------------------------------
+// Delayed Vesting Account
+
+var _ VestingAccount = (*DelayedVestingAccount)(nil)
+
+// DelayedVestingAccount implements the VestingAccount interface. It vests all
+// coins after a specific time, but non prior. In other words, it keeps them
+// locked until a specified time.
+type DelayedVestingAccount struct {
+        *BaseVestingAccount
+}
+
+// NewDelayedVestingAccount returns a DelayedVestingAccount
+func NewDelayedVestingAccount(baseAcc *BaseAccount, EndTime int64) *DelayedVestingAccount <span class="cov8" title="1">{
+        baseVestingAcc := &amp;BaseVestingAccount{
+                BaseAccount:     baseAcc,
+                OriginalVesting: baseAcc.Coins,
+                EndTime:         EndTime,
+        }
+
+        return &amp;DelayedVestingAccount{baseVestingAcc}
+}</span>
+
+// GetVestedCoins returns the total amount of vested coins for a delayed vesting
+// account. All coins are only vested once the schedule has elapsed.
+func (dva DelayedVestingAccount) GetVestedCoins(blockTime time.Time) sdk.Coins <span class="cov8" title="1">{
+        if blockTime.Unix() &gt;= dva.EndTime </span><span class="cov8" title="1">{
+                return dva.OriginalVesting
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GetVestingCoins returns the total number of vesting coins for a delayed
+// vesting account.
+func (dva DelayedVestingAccount) GetVestingCoins(blockTime time.Time) sdk.Coins <span class="cov8" title="1">{
+        return dva.OriginalVesting.Sub(dva.GetVestedCoins(blockTime))
+}</span>
+
+// SpendableCoins returns the total number of spendable coins for a delayed
+// vesting account.
+func (dva DelayedVestingAccount) SpendableCoins(blockTime time.Time) sdk.Coins <span class="cov8" title="1">{
+        return dva.spendableCoins(dva.GetVestingCoins(blockTime))
+}</span>
+
+// TrackDelegation tracks a desired delegation amount by setting the appropriate
+// values for the amount of delegated vesting, delegated free, and reducing the
+// overall amount of base coins.
+func (dva *DelayedVestingAccount) TrackDelegation(blockTime time.Time, amount sdk.Coins) <span class="cov8" title="1">{
+        dva.trackDelegation(dva.GetVestingCoins(blockTime), amount)
+}</span>
+
+// GetStartTime returns zero since a delayed vesting account has no start time.
+func (dva *DelayedVestingAccount) GetStartTime() int64 <span class="cov0" title="0">{
+        return 0
+}</span>
+
+// GetEndTime returns the time when vesting ends for a delayed vesting account.
+func (dva *DelayedVestingAccount) GetEndTime() int64 <span class="cov0" title="0">{
+        return dva.EndTime
+}</span>
+
+//-----------------------------------------------------------------------------
+// SubKeys
+
+type SubKeyMetadata struct {
+    PubKey              crypto.PubKey  `json:"public_key"`
+    PermissionedRoutes  []string       `json:"permission_routes"`
+    DailyFeeAllowance   sdk.Coins      `json:"daily_fee_allowance"`
+    DailyFeeUsed        sdk.Coins      `json:"daily_fee_used"`
+    Revoked             bool           `json:"revoked"`
+}
+
+// String implements fmt.Stringer
+func (sk SubKeyMetadata) String() string <span class="cov0" title="0">{
+        var pubkey string
+
+        if sk.PubKey != nil </span><span class="cov0" title="0">{
+                pubkey = sdk.MustBech32ifyAccPub(sk.PubKey)
+        }</span>
+
+        <span class="cov0" title="0">return fmt.Sprintf(`SubKey Metadata:
+  PubKey:             %s
+  PermissionedRoutes: %v
+  DailyFeeAllowance:  %v
+  DailyFeeUsed:       %v
+  Revoked:            %t`,
+                pubkey, sk.PermissionedRoutes,
+        sk.DailyFeeAllowance, sk.DailyFeeUsed, sk.Revoked,
+        )</span>
+}
+
+var _ Account = (*SubKeyAccount)(nil)
+
+// SubKeyAccount - an account structure that handles subkeys
+type SubKeyAccount struct {
+        Address        sdk.AccAddress    `json:"address"`
+        Coins          sdk.Coins         `json:"coins"`
+        PubKey         crypto.PubKey     `json:"public_key"`
+        AccountNumber  uint64            `json:"account_number"`
+        Sequence       uint64            `json:"sequence"`
+    SubKeys        []SubKeyMetadata  `json:"subkeys"`
+}
+
+// String implements fmt.Stringer
+func (acc SubKeyAccount) String() string <span class="cov0" title="0">{
+        var pubkey string
+
+        if acc.PubKey != nil </span><span class="cov0" title="0">{
+                pubkey = sdk.MustBech32ifyAccPub(acc.PubKey)
+        }</span>
+
+        <span class="cov0" title="0">return fmt.Sprintf(`Account:
+  Address:       %s
+  PubKey:        %s
+  Coins:         %s
+  AccountNumber: %d
+  Sequence:      %d
+  SubKeys:       %d`,
+                acc.Address, pubkey, acc.Coins,
+        acc.AccountNumber, acc.Sequence, len(acc.SubKeys),
+        )</span>
+}
+
+// ProtoSubKeyAccount - a prototype function for SubKeyAccount
+func ProtoSubKeyAccount() Account <span class="cov0" title="0">{
+        return &amp;SubKeyAccount{}
+}</span>
+
+// NewSubKeyAccountWithAddress - returns a new base account with a given address
+func NewSubKeyAccountWithAddress(addr sdk.AccAddress) SubKeyAccount <span class="cov0" title="0">{
+        return SubKeyAccount{
+                Address: addr,
+        }
+}</span>
+
+// GetAddress - Implements sdk.Account.
+func (acc SubKeyAccount) GetAddress() sdk.AccAddress <span class="cov0" title="0">{
+        return acc.Address
+}</span>
+
+// SetAddress - Implements sdk.Account.
+func (acc *SubKeyAccount) SetAddress(addr sdk.AccAddress) error <span class="cov0" title="0">{
+        if len(acc.Address) != 0 </span><span class="cov0" title="0">{
+                return errors.New("cannot override SubKeyAccount address")
+        }</span>
+        <span class="cov0" title="0">acc.Address = addr
+        return nil</span>
+}
+
+// GetPubKey - Implements sdk.Account.
+func (acc SubKeyAccount) GetPubKey() crypto.PubKey <span class="cov0" title="0">{
+        return acc.PubKey
+}</span>
+
+// SetPubKey - Implements sdk.Account.
+func (acc *SubKeyAccount) SetPubKey(pubKey crypto.PubKey) error <span class="cov0" title="0">{
+        acc.PubKey = pubKey
+        return nil
+}</span>
+
+// GetCoins - Implements sdk.Account.
+func (acc *SubKeyAccount) GetCoins() sdk.Coins <span class="cov0" title="0">{
+        return acc.Coins
+}</span>
+
+// SetCoins - Implements sdk.Account.
+func (acc *SubKeyAccount) SetCoins(coins sdk.Coins) error <span class="cov0" title="0">{
+        acc.Coins = coins
+        return nil
+}</span>
+
+// GetAccountNumber - Implements Account
+func (acc *SubKeyAccount) GetAccountNumber() uint64 <span class="cov0" title="0">{
+        return acc.AccountNumber
+}</span>
+
+// SetAccountNumber - Implements Account
+func (acc *SubKeyAccount) SetAccountNumber(accNumber uint64) error <span class="cov0" title="0">{
+        acc.AccountNumber = accNumber
+        return nil
+}</span>
+
+// GetSequence - Implements sdk.Account.
+func (acc *SubKeyAccount) GetSequence() uint64 <span class="cov0" title="0">{
+        return acc.Sequence
+}</span>
+
+// SetSequence - Implements sdk.Account.
+func (acc *SubKeyAccount) SetSequence(seq uint64) error <span class="cov0" title="0">{
+        acc.Sequence = seq
+        return nil
+}</span>
+
+// SpendableCoins returns the total set of spendable coins. For a base account,
+// this is simply the base coins.
+func (acc *SubKeyAccount) SpendableCoins(_ time.Time) sdk.Coins <span class="cov0" title="0">{
+        return acc.GetCoins()
+}</span>
+
+// convert BaseAccount to SubKeyAccount
+func (acc *BaseAccount) ToSubKeyAcc() SubKeyAccount <span class="cov0" title="0">{
+    return SubKeyAccount{
+        Address:        acc.Address,
+        Coins:          acc.Coins,
+        PubKey:         acc.PubKey,
+        AccountNumber:  acc.AccountNumber,
+        Sequence:       acc.Sequence,
+    }
+}</span>
+
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package auth
+
+import (
+        "bytes"
+        "encoding/hex"
+        "fmt"
+        "strings"
+        "time"
+
+        "github.com/tendermint/tendermint/crypto"
+        "github.com/tendermint/tendermint/crypto/multisig"
+        "github.com/tendermint/tendermint/crypto/secp256k1"
+
+        "github.com/cosmos/cosmos-sdk/codec"
+        sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
+var (
+        // simulation signature values used to estimate gas consumption
+        simSecp256k1Pubkey secp256k1.PubKeySecp256k1
+        simSecp256k1Sig    [64]byte
+)
+
+func init() <span class="cov8" title="1">{
+        // This decodes a valid hex string into a sepc256k1Pubkey for use in transaction simulation
+        bz, _ := hex.DecodeString("035AD6810A47F073553FF30D2FCC7E0D3B1C0B74B61A1AAA2582344037151E143A")
+        copy(simSecp256k1Pubkey[:], bz)
+}</span>
+
+// NewAnteHandler returns an AnteHandler that checks and increments sequence
+// numbers, checks signatures &amp; account numbers, and deducts fees from the first
+// signer.
+func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler <span class="cov8" title="1">{
+        return func(
+                ctx sdk.Context, tx sdk.Tx, simulate bool,
+        ) (newCtx sdk.Context, res sdk.Result, abort bool) </span><span class="cov8" title="1">{
+
+                // all transactions must be of type auth.StdTx
+                stdTx, ok := tx.(StdTx)
+                if !ok </span><span class="cov0" title="0">{
+                        // Set a gas meter with limit 0 as to prevent an infinite gas meter attack
+                        // during runTx.
+                        newCtx = SetGasMeter(simulate, ctx, 0)
+                        return newCtx, sdk.ErrInternal("tx must be StdTx").Result(), true
+                }</span>
+
+                <span class="cov8" title="1">params := ak.GetParams(ctx)
+
+                // Ensure that the provided fees meet a minimum threshold for the validator,
+                // if this is a CheckTx. This is only for local mempool purposes, and thus
+                // is only ran on check tx.
+                if ctx.IsCheckTx() &amp;&amp; !simulate </span><span class="cov0" title="0">{
+                        res := EnsureSufficientMempoolFees(ctx, stdTx.Fee)
+                        if !res.IsOK() </span><span class="cov0" title="0">{
+                                return newCtx, res, true
+                        }</span>
+                }
+
+                <span class="cov8" title="1">newCtx = SetGasMeter(simulate, ctx, stdTx.Fee.Gas)
+
+                // AnteHandlers must have their own defer/recover in order for the BaseApp
+                // to know how much gas was used! This is because the GasMeter is created in
+                // the AnteHandler, but if it panics the context won't be set properly in
+                // runTx's recover call.
+                defer func() </span><span class="cov8" title="1">{
+                        if r := recover(); r != nil </span><span class="cov8" title="1">{
+                                switch rType := r.(type) </span>{
+                                case sdk.ErrorOutOfGas:<span class="cov8" title="1">
+                                        log := fmt.Sprintf(
+                                                "out of gas in location: %v; gasWanted: %d, gasUsed: %d",
+                                                rType.Descriptor, stdTx.Fee.Gas, newCtx.GasMeter().GasConsumed(),
+                                        )
+                                        res = sdk.ErrOutOfGas(log).Result()
+
+                                        res.GasWanted = stdTx.Fee.Gas
+                                        res.GasUsed = newCtx.GasMeter().GasConsumed()
+                                        abort = true</span>
+                                default:<span class="cov0" title="0">
+                                        panic(r)</span>
+                                }
+                        }
+                }()
+
+                <span class="cov8" title="1">if err := tx.ValidateBasic(); err != nil </span><span class="cov8" title="1">{
+                        return newCtx, err.Result(), true
+                }</span>
+
+                <span class="cov8" title="1">newCtx.GasMeter().ConsumeGas(params.TxSizeCostPerByte*sdk.Gas(len(newCtx.TxBytes())), "txSize")
+
+                if res := ValidateMemo(stdTx, params); !res.IsOK() </span><span class="cov8" title="1">{
+                        return newCtx, res, true
+                }</span>
+
+                // stdSigs contains the sequence number, account number, and signatures.
+                // When simulating, this would just be a 0-length slice.
+                <span class="cov8" title="1">signerAddrs := stdTx.GetSigners()
+                signerAccs := make([]Account, len(signerAddrs))
+                isGenesis := ctx.BlockHeight() == 0
+
+                // fetch first signer, who's going to pay the fees
+                signerAccs[0], res = GetSignerAcc(newCtx, ak, signerAddrs[0])
+                if !res.IsOK() </span><span class="cov8" title="1">{
+                        return newCtx, res, true
+                }</span>
+
+                <span class="cov8" title="1">if !stdTx.Fee.Amount.IsZero() </span><span class="cov8" title="1">{
+                        signerAccs[0], res = DeductFees(ctx.BlockHeader().Time, signerAccs[0], stdTx.Fee)
+                        if !res.IsOK() </span><span class="cov8" title="1">{
+                                return newCtx, res, true
+                        }</span>
+
+                        <span class="cov8" title="1">fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)</span>
+                }
+
+                // stdSigs contains the sequence number, account number, and signatures.
+                // When simulating, this would just be a 0-length slice.
+                <span class="cov8" title="1">stdSigs := stdTx.GetSignatures()
+
+                for i := 0; i &lt; len(stdSigs); i++ </span><span class="cov8" title="1">{
+                        // skip the fee payer, account is cached and fees were deducted already
+                        if i != 0 </span><span class="cov8" title="1">{
+                                signerAccs[i], res = GetSignerAcc(newCtx, ak, signerAddrs[i])
+                                if !res.IsOK() </span><span class="cov8" title="1">{
+                                        return newCtx, res, true
+                                }</span>
+                        }
+
+                        // check signature, return account with incremented nonce
+                        <span class="cov8" title="1">signBytes := GetSignBytes(newCtx.ChainID(), stdTx, signerAccs[i], isGenesis)
+                        signerAccs[i], res = processSig(newCtx, signerAccs[i], stdSigs[i], signBytes, simulate, params)
+                        if !res.IsOK() </span><span class="cov8" title="1">{
+                                return newCtx, res, true
+                        }</span>
+
+                        <span class="cov8" title="1">ak.SetAccount(newCtx, signerAccs[i])</span>
+                }
+
+                // TODO: tx tags (?)
+                <span class="cov8" title="1">return newCtx, sdk.Result{GasWanted: stdTx.Fee.Gas}, false</span> // continue...
+        }
+}
+
+// GetSignerAcc returns an account for a given address that is expected to sign
+// a transaction.
+func GetSignerAcc(ctx sdk.Context, ak AccountKeeper, addr sdk.AccAddress) (Account, sdk.Result) <span class="cov8" title="1">{
+        if acc := ak.GetAccount(ctx, addr); acc != nil </span><span class="cov8" title="1">{
+                return acc, sdk.Result{}
+        }</span>
+        <span class="cov8" title="1">return nil, sdk.ErrUnknownAddress(fmt.Sprintf("account %s does not exist", addr)).Result()</span>
+}
+
+// ValidateMemo validates the memo size.
+func ValidateMemo(stdTx StdTx, params Params) sdk.Result <span class="cov8" title="1">{
+        memoLength := len(stdTx.GetMemo())
+        if uint64(memoLength) &gt; params.MaxMemoCharacters </span><span class="cov8" title="1">{
+                return sdk.ErrMemoTooLarge(
+                        fmt.Sprintf(
+                                "maximum number of characters is %d but received %d characters",
+                                params.MaxMemoCharacters, memoLength,
+                        ),
+                ).Result()
+        }</span>
+
+        <span class="cov8" title="1">return sdk.Result{}</span>
+}
+
+// verify the signature and increment the sequence. If the account doesn't have
+// a pubkey, set it.
+func processSig(
+        ctx sdk.Context, acc Account, sig StdSignature, signBytes []byte, simulate bool, params Params,
+) (updatedAcc Account, res sdk.Result) <span class="cov8" title="1">{
+
+        pubKey, res := ProcessPubKey(acc, sig, simulate)
+        if !res.IsOK() </span><span class="cov8" title="1">{
+                return nil, res
+        }</span>
+
+        <span class="cov8" title="1">err := acc.SetPubKey(pubKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, sdk.ErrInternal("setting PubKey on signer's account").Result()
+        }</span>
+
+        <span class="cov8" title="1">if simulate </span><span class="cov0" title="0">{
+                // Simulated txs should not contain a signature and are not required to
+                // contain a pubkey, so we must account for tx size of including a
+                // StdSignature (Amino encoding) and simulate gas consumption
+                // (assuming a SECP256k1 simulation key).
+                consumeSimSigGas(ctx.GasMeter(), pubKey, sig, params)
+        }</span>
+
+        <span class="cov8" title="1">if res := consumeSigVerificationGas(ctx.GasMeter(), sig.Signature, pubKey, params); !res.IsOK() </span><span class="cov0" title="0">{
+                return nil, res
+        }</span>
+
+        <span class="cov8" title="1">if !simulate &amp;&amp; !pubKey.VerifyBytes(signBytes, sig.Signature) </span><span class="cov8" title="1">{
+                return nil, sdk.ErrUnauthorized("signature verification failed").Result()
+        }</span>
+
+        <span class="cov8" title="1">if err := acc.SetSequence(acc.GetSequence() + 1); err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+
+        <span class="cov8" title="1">return acc, res</span>
+}
+
+func consumeSimSigGas(gasmeter sdk.GasMeter, pubkey crypto.PubKey, sig StdSignature, params Params) <span class="cov0" title="0">{
+        simSig := StdSignature{PubKey: pubkey}
+        if len(sig.Signature) == 0 </span><span class="cov0" title="0">{
+                simSig.Signature = simSecp256k1Sig[:]
+        }</span>
+
+        <span class="cov0" title="0">sigBz := msgCdc.MustMarshalBinaryLengthPrefixed(simSig)
+        cost := sdk.Gas(len(sigBz) + 6)
+
+        // If the pubkey is a multi-signature pubkey, then we estimate for the maximum
+        // number of signers.
+        if _, ok := pubkey.(multisig.PubKeyMultisigThreshold); ok </span><span class="cov0" title="0">{
+                cost *= params.TxSigLimit
+        }</span>
+
+        <span class="cov0" title="0">gasmeter.ConsumeGas(params.TxSizeCostPerByte*cost, "txSize")</span>
+}
+
+// ProcessPubKey verifies that the given account address matches that of the
+// StdSignature. In addition, it will set the public key of the account if it
+// has not been set.
+func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey, sdk.Result) <span class="cov8" title="1">{
+        // If pubkey is not known for account, set it from the StdSignature.
+        pubKey := acc.GetPubKey()
+        if simulate </span><span class="cov8" title="1">{
+                // In simulate mode the transaction comes with no signatures, thus if the
+                // account's pubkey is nil, both signature verification and gasKVStore.Set()
+                // shall consume the largest amount, i.e. it takes more gas to verify
+                // secp256k1 keys than ed25519 ones.
+                if pubKey == nil </span><span class="cov8" title="1">{
+                        return simSecp256k1Pubkey, sdk.Result{}
+                }</span>
+
+                <span class="cov8" title="1">return pubKey, sdk.Result{}</span>
+        }
+
+        <span class="cov8" title="1">if pubKey == nil </span><span class="cov8" title="1">{
+                pubKey = sig.PubKey
+                if pubKey == nil </span><span class="cov8" title="1">{
+                        return nil, sdk.ErrInvalidPubKey("PubKey not found").Result()
+                }</span>
+
+                <span class="cov8" title="1">if !bytes.Equal(pubKey.Address(), acc.GetAddress()) </span><span class="cov8" title="1">{
+                        return nil, sdk.ErrInvalidPubKey(
+                                fmt.Sprintf("PubKey does not match Signer address %s", acc.GetAddress())).Result()
+                }</span>
+        }
+
+        <span class="cov8" title="1">return pubKey, sdk.Result{}</span>
+}
+
+// consumeSigVerificationGas consumes gas for signature verification based upon
+// the public key type. The cost is fetched from the given params and is matched
+// by the concrete type.
+//
+// TODO: Design a cleaner and flexible way to match concrete public key types.
+func consumeSigVerificationGas(
+        meter sdk.GasMeter, sig []byte, pubkey crypto.PubKey, params Params,
+) sdk.Result <span class="cov8" title="1">{
+
+        pubkeyType := strings.ToLower(fmt.Sprintf("%T", pubkey))
+
+        switch </span>{
+        case strings.Contains(pubkeyType, "ed25519"):<span class="cov8" title="1">
+                meter.ConsumeGas(params.SigVerifyCostED25519, "ante verify: ed25519")
+                return sdk.ErrInvalidPubKey("ED25519 public keys are unsupported").Result()</span>
+
+        case strings.Contains(pubkeyType, "secp256k1"):<span class="cov8" title="1">
+                meter.ConsumeGas(params.SigVerifyCostSecp256k1, "ante verify: secp256k1")
+                return sdk.Result{}</span>
+
+        case strings.Contains(pubkeyType, "multisigthreshold"):<span class="cov8" title="1">
+                var multisignature multisig.Multisignature
+                codec.Cdc.MustUnmarshalBinaryBare(sig, &amp;multisignature)
+
+                multisigPubKey := pubkey.(multisig.PubKeyMultisigThreshold)
+                consumeMultisignatureVerificationGas(meter, multisignature, multisigPubKey, params)
+                return sdk.Result{}</span>
+
+        default:<span class="cov8" title="1">
+                return sdk.ErrInvalidPubKey(fmt.Sprintf("unrecognized public key type: %s", pubkeyType)).Result()</span>
+        }
+}
+
+func consumeMultisignatureVerificationGas(meter sdk.GasMeter,
+        sig multisig.Multisignature, pubkey multisig.PubKeyMultisigThreshold,
+        params Params) <span class="cov8" title="1">{
+
+        size := sig.BitArray.Size()
+        sigIndex := 0
+        for i := 0; i &lt; size; i++ </span><span class="cov8" title="1">{
+                if sig.BitArray.GetIndex(i) </span><span class="cov8" title="1">{
+                        consumeSigVerificationGas(meter, sig.Sigs[sigIndex], pubkey.PubKeys[i], params)
+                        sigIndex++
+                }</span>
+        }
+}
+
+// DeductFees deducts fees from the given account.
+//
+// NOTE: We could use the CoinKeeper (in addition to the AccountKeeper, because
+// the CoinKeeper doesn't give us accounts), but it seems easier to do this.
+func DeductFees(blockTime time.Time, acc Account, fee StdFee) (Account, sdk.Result) <span class="cov8" title="1">{
+        coins := acc.GetCoins()
+        feeAmount := fee.Amount
+
+        if !feeAmount.IsValid() </span><span class="cov0" title="0">{
+                return nil, sdk.ErrInsufficientFee(fmt.Sprintf("invalid fee amount: %s", feeAmount)).Result()
+        }</span>
+
+        // get the resulting coins deducting the fees
+        <span class="cov8" title="1">newCoins, ok := coins.SafeSub(feeAmount)
+        if ok </span><span class="cov8" title="1">{
+                return nil, sdk.ErrInsufficientFunds(
+                        fmt.Sprintf("insufficient funds to pay for fees; %s &lt; %s", coins, feeAmount),
+                ).Result()
+        }</span>
+
+        // Validate the account has enough "spendable" coins as this will cover cases
+        // such as vesting accounts.
+        <span class="cov8" title="1">spendableCoins := acc.SpendableCoins(blockTime)
+        if _, hasNeg := spendableCoins.SafeSub(feeAmount); hasNeg </span><span class="cov0" title="0">{
+                return nil, sdk.ErrInsufficientFunds(
+                        fmt.Sprintf("insufficient funds to pay for fees; %s &lt; %s", spendableCoins, feeAmount),
+                ).Result()
+        }</span>
+
+        <span class="cov8" title="1">if err := acc.SetCoins(newCoins); err != nil </span><span class="cov0" title="0">{
+                return nil, sdk.ErrInternal(err.Error()).Result()
+        }</span>
+
+        <span class="cov8" title="1">return acc, sdk.Result{}</span>
+}
+
+// EnsureSufficientMempoolFees verifies that the given transaction has supplied
+// enough fees to cover a proposer's minimum fees. A result object is returned
+// indicating success or failure.
+//
+// Contract: This should only be called during CheckTx as it cannot be part of
+// consensus.
+func EnsureSufficientMempoolFees(ctx sdk.Context, stdFee StdFee) sdk.Result <span class="cov8" title="1">{
+        minGasPrices := ctx.MinGasPrices()
+        if !minGasPrices.IsZero() </span><span class="cov8" title="1">{
+                requiredFees := make(sdk.Coins, len(minGasPrices))
+
+                // Determine the required fees by multiplying each required minimum gas
+                // price by the gas limit, where fee = ceil(minGasPrice * gasLimit).
+                glDec := sdk.NewDec(int64(stdFee.Gas))
+                for i, gp := range minGasPrices </span><span class="cov8" title="1">{
+                        fee := gp.Amount.Mul(glDec)
+                        requiredFees[i] = sdk.NewCoin(gp.Denom, fee.Ceil().RoundInt())
+                }</span>
+
+                <span class="cov8" title="1">if !stdFee.Amount.IsAnyGTE(requiredFees) </span><span class="cov8" title="1">{
+                        return sdk.ErrInsufficientFee(
+                                fmt.Sprintf(
+                                        "insufficient fees; got: %q required: %q", stdFee.Amount, requiredFees,
+                                ),
+                        ).Result()
+                }</span>
+        }
+
+        <span class="cov8" title="1">return sdk.Result{}</span>
+}
+
+// SetGasMeter returns a new context with a gas meter set from a given context.
+func SetGasMeter(simulate bool, ctx sdk.Context, gasLimit uint64) sdk.Context <span class="cov8" title="1">{
+        // In various cases such as simulation and during the genesis block, we do not
+        // meter any gas utilization.
+        if simulate || ctx.BlockHeight() == 0 </span><span class="cov8" title="1">{
+                return ctx.WithGasMeter(sdk.NewInfiniteGasMeter())
+        }</span>
+
+        <span class="cov8" title="1">return ctx.WithGasMeter(sdk.NewGasMeter(gasLimit))</span>
+}
+
+// GetSignBytes returns a slice of bytes to sign over for a given transaction
+// and an account.
+func GetSignBytes(chainID string, stdTx StdTx, acc Account, genesis bool) []byte <span class="cov8" title="1">{
+        var accNum uint64
+        if !genesis </span><span class="cov8" title="1">{
+                accNum = acc.GetAccountNumber()
+        }</span>
+
+        <span class="cov8" title="1">return StdSignBytes(
+                chainID, accNum, acc.GetSequence(), stdTx.Fee, stdTx.Msgs, stdTx.Memo,
+        )</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package auth
+
+import (
+        "github.com/cosmos/cosmos-sdk/codec"
+)
+
+// RegisterCodec registers concrete types on the codec
+func RegisterCodec(cdc *codec.Codec) <span class="cov8" title="1">{
+        cdc.RegisterInterface((*Account)(nil), nil)
+        cdc.RegisterConcrete(&amp;BaseAccount{}, "auth/Account", nil)
+        cdc.RegisterInterface((*VestingAccount)(nil), nil)
+        cdc.RegisterConcrete(&amp;BaseVestingAccount{}, "auth/BaseVestingAccount", nil)
+        cdc.RegisterConcrete(&amp;ContinuousVestingAccount{}, "auth/ContinuousVestingAccount", nil)
+        cdc.RegisterConcrete(&amp;DelayedVestingAccount{}, "auth/DelayedVestingAccount", nil)
+        cdc.RegisterConcrete(StdTx{}, "auth/StdTx", nil)
+}</span>
+
+// RegisterBaseAccount most users shouldn't use this, but this comes in handy for tests.
+func RegisterBaseAccount(cdc *codec.Codec) <span class="cov8" title="1">{
+        cdc.RegisterInterface((*Account)(nil), nil)
+        cdc.RegisterInterface((*VestingAccount)(nil), nil)
+        cdc.RegisterConcrete(&amp;BaseAccount{}, "cosmos-sdk/BaseAccount", nil)
+        cdc.RegisterConcrete(&amp;BaseVestingAccount{}, "cosmos-sdk/BaseVestingAccount", nil)
+        cdc.RegisterConcrete(&amp;ContinuousVestingAccount{}, "cosmos-sdk/ContinuousVestingAccount", nil)
+        cdc.RegisterConcrete(&amp;DelayedVestingAccount{}, "cosmos-sdk/DelayedVestingAccount", nil)
+        codec.RegisterCrypto(cdc)
+}</span>
+
+var msgCdc = codec.New()
+
+func init() <span class="cov8" title="1">{
+        RegisterCodec(msgCdc)
+        codec.RegisterCrypto(msgCdc)
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package auth
+
+import (
+        codec "github.com/cosmos/cosmos-sdk/codec"
+        sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
+var (
+        collectedFeesKey = []byte("collectedFees")
+)
+
+// FeeCollectionKeeper handles collection of fees in the anteHandler
+// and setting of MinFees for different fee tokens
+type FeeCollectionKeeper struct {
+
+        // The (unexposed) key used to access the fee store from the Context.
+        key sdk.StoreKey
+
+        // The codec codec for binary encoding/decoding of accounts.
+        cdc *codec.Codec
+}
+
+// NewFeeCollectionKeeper returns a new FeeCollectionKeeper
+func NewFeeCollectionKeeper(cdc *codec.Codec, key sdk.StoreKey) FeeCollectionKeeper <span class="cov8" title="1">{
+        return FeeCollectionKeeper{
+                key: key,
+                cdc: cdc,
+        }
+}</span>
+
+// GetCollectedFees - retrieves the collected fee pool
+func (fck FeeCollectionKeeper) GetCollectedFees(ctx sdk.Context) sdk.Coins <span class="cov8" title="1">{
+        store := ctx.KVStore(fck.key)
+        bz := store.Get(collectedFeesKey)
+        if bz == nil </span><span class="cov8" title="1">{
+                return sdk.NewCoins()
+        }</span>
+
+        <span class="cov8" title="1">emptyFees := sdk.NewCoins()
+        feePool := &amp;emptyFees
+        fck.cdc.MustUnmarshalBinaryLengthPrefixed(bz, feePool)
+        return *feePool</span>
+}
+
+func (fck FeeCollectionKeeper) setCollectedFees(ctx sdk.Context, coins sdk.Coins) <span class="cov8" title="1">{
+        bz := fck.cdc.MustMarshalBinaryLengthPrefixed(coins)
+        store := ctx.KVStore(fck.key)
+        store.Set(collectedFeesKey, bz)
+}</span>
+
+// AddCollectedFees - add to the fee pool
+func (fck FeeCollectionKeeper) AddCollectedFees(ctx sdk.Context, coins sdk.Coins) sdk.Coins <span class="cov8" title="1">{
+        newCoins := fck.GetCollectedFees(ctx).Add(coins)
+        fck.setCollectedFees(ctx, newCoins)
+
+        return newCoins
+}</span>
+
+// ClearCollectedFees - clear the fee pool
+func (fck FeeCollectionKeeper) ClearCollectedFees(ctx sdk.Context) <span class="cov8" title="1">{
+        fck.setCollectedFees(ctx, sdk.NewCoins())
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package auth
+
+import (
+        "fmt"
+
+        sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
+// GenesisState - all auth state that must be provided at genesis
+type GenesisState struct {
+        CollectedFees sdk.Coins `json:"collected_fees"`
+        Params        Params    `json:"params"`
+}
+
+// NewGenesisState - Create a new genesis state
+func NewGenesisState(collectedFees sdk.Coins, params Params) GenesisState <span class="cov0" title="0">{
+        return GenesisState{
+                Params:        params,
+                CollectedFees: collectedFees,
+        }
+}</span>
+
+// DefaultGenesisState - Return a default genesis state
+func DefaultGenesisState() GenesisState <span class="cov0" title="0">{
+        return NewGenesisState(sdk.NewCoins(), DefaultParams())
+}</span>
+
+// InitGenesis - Init store state from genesis data
+func InitGenesis(ctx sdk.Context, ak AccountKeeper, fck FeeCollectionKeeper, data GenesisState) <span class="cov0" title="0">{
+        ak.SetParams(ctx, data.Params)
+        fck.setCollectedFees(ctx, data.CollectedFees)
+}</span>
+
+// ExportGenesis returns a GenesisState for a given context and keeper
+func ExportGenesis(ctx sdk.Context, ak AccountKeeper, fck FeeCollectionKeeper) GenesisState <span class="cov0" title="0">{
+        collectedFees := fck.GetCollectedFees(ctx)
+        params := ak.GetParams(ctx)
+
+        return NewGenesisState(collectedFees, params)
+}</span>
+
+// ValidateGenesis performs basic validation of auth genesis data returning an
+// error for any failed validation criteria.
+func ValidateGenesis(data GenesisState) error <span class="cov0" title="0">{
+        if data.Params.TxSigLimit == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid tx signature limit: %d", data.Params.TxSigLimit)
+        }</span>
+        <span class="cov0" title="0">if data.Params.SigVerifyCostED25519 == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid ED25519 signature verification cost: %d", data.Params.SigVerifyCostED25519)
+        }</span>
+        <span class="cov0" title="0">if data.Params.SigVerifyCostSecp256k1 == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid SECK256k1 signature verification cost: %d", data.Params.SigVerifyCostSecp256k1)
+        }</span>
+        <span class="cov0" title="0">if data.Params.MaxMemoCharacters == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid max memo characters: %d", data.Params.MaxMemoCharacters)
+        }</span>
+        <span class="cov0" title="0">if data.Params.TxSizeCostPerByte == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid tx size cost per byte: %d", data.Params.TxSizeCostPerByte)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package auth
+
+import (
+        "fmt"
+
+        "github.com/tendermint/tendermint/crypto"
+
+        codec "github.com/cosmos/cosmos-sdk/codec"
+        sdk "github.com/cosmos/cosmos-sdk/types"
+        "github.com/cosmos/cosmos-sdk/x/params"
+)
+
+const (
+        // StoreKey is string representation of the store key for auth
+        StoreKey = "acc"
+
+        // FeeStoreKey is a string representation of the store key for fees
+        FeeStoreKey = "fee"
+
+        // QuerierRoute is the querier route for acc
+        QuerierRoute = StoreKey
+)
+
+var (
+        // AddressStoreKeyPrefix prefix for account-by-address store
+        AddressStoreKeyPrefix = []byte{0x01}
+
+        globalAccountNumberKey = []byte("globalAccountNumber")
+)
+
+// AccountKeeper encodes/decodes accounts using the go-amino (binary)
+// encoding/decoding library.
+type AccountKeeper struct {
+        // The (unexposed) key used to access the store from the Context.
+        key sdk.StoreKey
+
+        // The prototypical Account constructor.
+        proto func() Account
+
+        // The codec codec for binary encoding/decoding of accounts.
+        cdc *codec.Codec
+
+        paramSubspace params.Subspace
+}
+
+// NewAccountKeeper returns a new sdk.AccountKeeper that uses go-amino to
+// (binary) encode and decode concrete sdk.Accounts.
+// nolint
+func NewAccountKeeper(
+        cdc *codec.Codec, key sdk.StoreKey, paramstore params.Subspace, proto func() Account,
+) AccountKeeper <span class="cov8" title="1">{
+
+        return AccountKeeper{
+                key:           key,
+                proto:         proto,
+                cdc:           cdc,
+                paramSubspace: paramstore.WithKeyTable(ParamKeyTable()),
+        }
+}</span>
+
+// NewAccountWithAddress implements sdk.AccountKeeper.
+func (ak AccountKeeper) NewAccountWithAddress(ctx sdk.Context, addr sdk.AccAddress) Account <span class="cov8" title="1">{
+        acc := ak.proto()
+        err := acc.SetAddress(addr)
+        if err != nil </span><span class="cov0" title="0">{
+                // Handle w/ #870
+                panic(err)</span>
+        }
+        <span class="cov8" title="1">err = acc.SetAccountNumber(ak.GetNextAccountNumber(ctx))
+        if err != nil </span><span class="cov0" title="0">{
+                // Handle w/ #870
+                panic(err)</span>
+        }
+        <span class="cov8" title="1">return acc</span>
+}
+
+// NewAccount creates a new account
+func (ak AccountKeeper) NewAccount(ctx sdk.Context, acc Account) Account <span class="cov0" title="0">{
+        if err := acc.SetAccountNumber(ak.GetNextAccountNumber(ctx)); err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+        <span class="cov0" title="0">return acc</span>
+}
+
+// AddressStoreKey turn an address to key used to get it from the account store
+func AddressStoreKey(addr sdk.AccAddress) []byte <span class="cov8" title="1">{
+        return append(AddressStoreKeyPrefix, addr.Bytes()...)
+}</span>
+
+// GetAccount implements sdk.AccountKeeper.
+func (ak AccountKeeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) Account <span class="cov8" title="1">{
+        store := ctx.KVStore(ak.key)
+        bz := store.Get(AddressStoreKey(addr))
+        if bz == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">acc := ak.decodeAccount(bz)
+    // acc = acc.ToSubKeyAcc()
+        return acc</span>
+}
+
+// GetAllAccounts returns all accounts in the accountKeeper.
+func (ak AccountKeeper) GetAllAccounts(ctx sdk.Context) []Account <span class="cov0" title="0">{
+        accounts := []Account{}
+        appendAccount := func(acc Account) (stop bool) </span><span class="cov0" title="0">{
+                accounts = append(accounts, acc)
+                return false
+        }</span>
+        <span class="cov0" title="0">ak.IterateAccounts(ctx, appendAccount)
+        return accounts</span>
+}
+
+// SetAccount implements sdk.AccountKeeper.
+func (ak AccountKeeper) SetAccount(ctx sdk.Context, acc Account) <span class="cov8" title="1">{
+        addr := acc.GetAddress()
+        store := ctx.KVStore(ak.key)
+        bz, err := ak.cdc.MarshalBinaryBare(acc)
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+        <span class="cov8" title="1">store.Set(AddressStoreKey(addr), bz)</span>
+}
+
+// RemoveAccount removes an account for the account mapper store.
+// NOTE: this will cause supply invariant violation if called
+func (ak AccountKeeper) RemoveAccount(ctx sdk.Context, acc Account) <span class="cov8" title="1">{
+        addr := acc.GetAddress()
+        store := ctx.KVStore(ak.key)
+        store.Delete(AddressStoreKey(addr))
+}</span>
+
+// IterateAccounts implements sdk.AccountKeeper.
+func (ak AccountKeeper) IterateAccounts(ctx sdk.Context, process func(Account) (stop bool)) <span class="cov0" title="0">{
+        store := ctx.KVStore(ak.key)
+        iter := sdk.KVStorePrefixIterator(store, AddressStoreKeyPrefix)
+        defer iter.Close()
+        for </span><span class="cov0" title="0">{
+                if !iter.Valid() </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov0" title="0">val := iter.Value()
+                acc := ak.decodeAccount(val)
+                if process(acc) </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov0" title="0">iter.Next()</span>
+        }
+}
+
+// GetPubKey Returns the PubKey of the account at address
+func (ak AccountKeeper) GetPubKey(ctx sdk.Context, addr sdk.AccAddress) (crypto.PubKey, sdk.Error) <span class="cov0" title="0">{
+        acc := ak.GetAccount(ctx, addr)
+        if acc == nil </span><span class="cov0" title="0">{
+                return nil, sdk.ErrUnknownAddress(fmt.Sprintf("account %s does not exist", addr))
+        }</span>
+        <span class="cov0" title="0">return acc.GetPubKey(), nil</span>
+}
+
+// GetSequence Returns the Sequence of the account at address
+func (ak AccountKeeper) GetSequence(ctx sdk.Context, addr sdk.AccAddress) (uint64, sdk.Error) <span class="cov0" title="0">{
+        acc := ak.GetAccount(ctx, addr)
+        if acc == nil </span><span class="cov0" title="0">{
+                return 0, sdk.ErrUnknownAddress(fmt.Sprintf("account %s does not exist", addr))
+        }</span>
+        <span class="cov0" title="0">return acc.GetSequence(), nil</span>
+}
+
+func (ak AccountKeeper) setSequence(ctx sdk.Context, addr sdk.AccAddress, newSequence uint64) sdk.Error <span class="cov0" title="0">{
+        acc := ak.GetAccount(ctx, addr)
+        if acc == nil </span><span class="cov0" title="0">{
+                return sdk.ErrUnknownAddress(fmt.Sprintf("account %s does not exist", addr))
+        }</span>
+
+        <span class="cov0" title="0">if err := acc.SetSequence(newSequence); err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+
+        <span class="cov0" title="0">ak.SetAccount(ctx, acc)
+        return nil</span>
+}
+
+// GetNextAccountNumber Returns and increments the global account number counter
+func (ak AccountKeeper) GetNextAccountNumber(ctx sdk.Context) uint64 <span class="cov8" title="1">{
+        var accNumber uint64
+        store := ctx.KVStore(ak.key)
+        bz := store.Get(globalAccountNumberKey)
+        if bz == nil </span><span class="cov8" title="1">{
+                accNumber = 0
+        }</span> else<span class="cov8" title="1"> {
+                err := ak.cdc.UnmarshalBinaryLengthPrefixed(bz, &amp;accNumber)
+                if err != nil </span><span class="cov0" title="0">{
+                        panic(err)</span>
+                }
+        }
+
+        <span class="cov8" title="1">bz = ak.cdc.MustMarshalBinaryLengthPrefixed(accNumber + 1)
+        store.Set(globalAccountNumberKey, bz)
+
+        return accNumber</span>
+}
+
+// -----------------------------------------------------------------------------
+// Params
+
+// SetParams sets the auth module's parameters.
+func (ak AccountKeeper) SetParams(ctx sdk.Context, params Params) <span class="cov8" title="1">{
+        ak.paramSubspace.SetParamSet(ctx, &amp;params)
+}</span>
+
+// GetParams gets the auth module's parameters.
+func (ak AccountKeeper) GetParams(ctx sdk.Context) (params Params) <span class="cov8" title="1">{
+        ak.paramSubspace.GetParamSet(ctx, &amp;params)
+        return
+}</span>
+
+// -----------------------------------------------------------------------------
+// Misc.
+
+func (ak AccountKeeper) decodeAccount(bz []byte) (acc Account) <span class="cov8" title="1">{
+        err := ak.cdc.UnmarshalBinaryBare(bz, &amp;acc)
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package auth
+
+import (
+        "bytes"
+        "fmt"
+        "strings"
+
+        "github.com/cosmos/cosmos-sdk/x/params"
+)
+
+// DefaultParamspace defines the default auth module parameter subspace
+const DefaultParamspace = "auth"
+
+// Default parameter values
+const (
+        DefaultMaxMemoCharacters      uint64 = 256
+        DefaultTxSigLimit             uint64 = 7
+        DefaultTxSizeCostPerByte      uint64 = 10
+        DefaultSigVerifyCostED25519   uint64 = 590
+        DefaultSigVerifyCostSecp256k1 uint64 = 1000
+)
+
+// Parameter keys
+var (
+        KeyMaxMemoCharacters      = []byte("MaxMemoCharacters")
+        KeyTxSigLimit             = []byte("TxSigLimit")
+        KeyTxSizeCostPerByte      = []byte("TxSizeCostPerByte")
+        KeySigVerifyCostED25519   = []byte("SigVerifyCostED25519")
+        KeySigVerifyCostSecp256k1 = []byte("SigVerifyCostSecp256k1")
+)
+
+var _ params.ParamSet = &amp;Params{}
+
+// Params defines the parameters for the auth module.
+type Params struct {
+        MaxMemoCharacters      uint64 `json:"max_memo_characters"`
+        TxSigLimit             uint64 `json:"tx_sig_limit"`
+        TxSizeCostPerByte      uint64 `json:"tx_size_cost_per_byte"`
+        SigVerifyCostED25519   uint64 `json:"sig_verify_cost_ed25519"`
+        SigVerifyCostSecp256k1 uint64 `json:"sig_verify_cost_secp256k1"`
+}
+
+// ParamKeyTable for auth module
+func ParamKeyTable() params.KeyTable <span class="cov8" title="1">{
+        return params.NewKeyTable().RegisterParamSet(&amp;Params{})
+}</span>
+
+// ParamSetPairs implements the ParamSet interface and returns all the key/value pairs
+// pairs of auth module's parameters.
+// nolint
+func (p *Params) ParamSetPairs() params.ParamSetPairs <span class="cov8" title="1">{
+        return params.ParamSetPairs{
+                {KeyMaxMemoCharacters, &amp;p.MaxMemoCharacters},
+                {KeyTxSigLimit, &amp;p.TxSigLimit},
+                {KeyTxSizeCostPerByte, &amp;p.TxSizeCostPerByte},
+                {KeySigVerifyCostED25519, &amp;p.SigVerifyCostED25519},
+                {KeySigVerifyCostSecp256k1, &amp;p.SigVerifyCostSecp256k1},
+        }
+}</span>
+
+// Equal returns a boolean determining if two Params types are identical.
+func (p Params) Equal(p2 Params) bool <span class="cov0" title="0">{
+        bz1 := msgCdc.MustMarshalBinaryLengthPrefixed(&amp;p)
+        bz2 := msgCdc.MustMarshalBinaryLengthPrefixed(&amp;p2)
+        return bytes.Equal(bz1, bz2)
+}</span>
+
+// DefaultParams returns a default set of parameters.
+func DefaultParams() Params <span class="cov8" title="1">{
+        return Params{
+                MaxMemoCharacters:      DefaultMaxMemoCharacters,
+                TxSigLimit:             DefaultTxSigLimit,
+                TxSizeCostPerByte:      DefaultTxSizeCostPerByte,
+                SigVerifyCostED25519:   DefaultSigVerifyCostED25519,
+                SigVerifyCostSecp256k1: DefaultSigVerifyCostSecp256k1,
+        }
+}</span>
+
+// String implements the stringer interface.
+func (p Params) String() string <span class="cov0" title="0">{
+        var sb strings.Builder
+        sb.WriteString("Params: \n")
+        sb.WriteString(fmt.Sprintf("MaxMemoCharacters: %d\n", p.MaxMemoCharacters))
+        sb.WriteString(fmt.Sprintf("TxSigLimit: %d\n", p.TxSigLimit))
+        sb.WriteString(fmt.Sprintf("TxSizeCostPerByte: %d\n", p.TxSizeCostPerByte))
+        sb.WriteString(fmt.Sprintf("SigVerifyCostED25519: %d\n", p.SigVerifyCostED25519))
+        sb.WriteString(fmt.Sprintf("SigVerifyCostSecp256k1: %d\n", p.SigVerifyCostSecp256k1))
+        return sb.String()
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package auth
+
+import (
+        "fmt"
+
+        abci "github.com/tendermint/tendermint/abci/types"
+
+        "github.com/cosmos/cosmos-sdk/codec"
+        sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
+// query endpoints supported by the auth Querier
+const (
+        QueryAccount = "account"
+)
+
+// creates a querier for auth REST endpoints
+func NewQuerier(keeper AccountKeeper) sdk.Querier <span class="cov0" title="0">{
+        return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, sdk.Error) </span><span class="cov0" title="0">{
+                switch path[0] </span>{
+                case QueryAccount:<span class="cov0" title="0">
+                        return queryAccount(ctx, req, keeper)</span>
+                default:<span class="cov0" title="0">
+                        return nil, sdk.ErrUnknownRequest("unknown auth query endpoint")</span>
+                }
+        }
+}
+
+// defines the params for query: "custom/acc/account"
+type QueryAccountParams struct {
+        Address sdk.AccAddress
+}
+
+func NewQueryAccountParams(addr sdk.AccAddress) QueryAccountParams <span class="cov8" title="1">{
+        return QueryAccountParams{
+                Address: addr,
+        }
+}</span>
+
+func queryAccount(ctx sdk.Context, req abci.RequestQuery, keeper AccountKeeper) ([]byte, sdk.Error) <span class="cov8" title="1">{
+        var params QueryAccountParams
+        if err := keeper.cdc.UnmarshalJSON(req.Data, &amp;params); err != nil </span><span class="cov8" title="1">{
+                return nil, sdk.ErrInternal(fmt.Sprintf("failed to parse params: %s", err))
+        }</span>
+
+        <span class="cov8" title="1">account := keeper.GetAccount(ctx, params.Address)
+        if account == nil </span><span class="cov8" title="1">{
+                return nil, sdk.ErrUnknownAddress(fmt.Sprintf("account %s does not exist", params.Address))
+        }</span>
+
+        <span class="cov8" title="1">bz, err := codec.MarshalJSONIndent(keeper.cdc, account)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, sdk.ErrInternal(sdk.AppendMsgToErr("could not marshal result to JSON", err.Error()))
+        }</span>
+
+        <span class="cov8" title="1">return bz, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package auth
+
+import (
+        "encoding/json"
+        "fmt"
+
+        "github.com/tendermint/tendermint/crypto"
+        "github.com/tendermint/tendermint/crypto/multisig"
+
+        "github.com/cosmos/cosmos-sdk/codec"
+        sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
+var (
+        _ sdk.Tx = (*StdTx)(nil)
+
+        maxGasWanted = uint64((1 &lt;&lt; 63) - 1)
+)
+
+type MsgAddSubKey struct {
+    Address sdk.AccAddress
+    PubKey crypto.PubKey
+    PermissionedRoutes []string
+    DailyFeeAllowance sdk.Coins
+}
+
+// StdTx is a standard way to wrap a Msg with Fee and Signatures.
+// NOTE: the first signature is the fee payer (Signatures must not be nil).
+type StdTx struct {
+        Msgs       []sdk.Msg      `json:"msg"`
+        Fee        StdFee         `json:"fee"`
+        Signatures []StdSignature `json:"signatures"`
+        Memo       string         `json:"memo"`
+}
+
+func NewStdTx(msgs []sdk.Msg, fee StdFee, sigs []StdSignature, memo string) StdTx <span class="cov8" title="1">{
+        return StdTx{
+                Msgs:       msgs,
+                Fee:        fee,
+                Signatures: sigs,
+                Memo:       memo,
+        }
+}</span>
+
+// GetMsgs returns the all the transaction's messages.
+func (tx StdTx) GetMsgs() []sdk.Msg <span class="cov8" title="1">{ return tx.Msgs }</span>
+
+// ValidateBasic does a simple and lightweight validation check that doesn't
+// require access to any other information.
+func (tx StdTx) ValidateBasic() sdk.Error <span class="cov8" title="1">{
+        stdSigs := tx.GetSignatures()
+
+        if tx.Fee.Gas &gt; maxGasWanted </span><span class="cov8" title="1">{
+                return sdk.ErrGasOverflow(fmt.Sprintf("invalid gas supplied; %d &gt; %d", tx.Fee.Gas, maxGasWanted))
+        }</span>
+        <span class="cov8" title="1">if tx.Fee.Amount.IsAnyNegative() </span><span class="cov8" title="1">{
+                return sdk.ErrInsufficientFee(fmt.Sprintf("invalid fee %s amount provided", tx.Fee.Amount))
+        }</span>
+        <span class="cov8" title="1">if len(stdSigs) == 0 </span><span class="cov8" title="1">{
+                return sdk.ErrNoSignatures("no signers")
+        }</span>
+        <span class="cov8" title="1">if len(stdSigs) != len(tx.GetSigners()) </span><span class="cov8" title="1">{
+                return sdk.ErrUnauthorized("wrong number of signers")
+        }</span>
+
+        <span class="cov8" title="1">sigCount := 0
+        for i := 0; i &lt; len(stdSigs); i++ </span><span class="cov8" title="1">{
+                sigCount += countSubKeys(stdSigs[i].PubKey)
+                if uint64(sigCount) &gt; DefaultTxSigLimit </span><span class="cov8" title="1">{
+                        return sdk.ErrTooManySignatures(
+                                fmt.Sprintf("signatures: %d, limit: %d", sigCount, DefaultTxSigLimit),
+                        )
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// countSubKeys counts the total number of keys for a multi-sig public key.
+func countSubKeys(pub crypto.PubKey) int <span class="cov8" title="1">{
+        v, ok := pub.(multisig.PubKeyMultisigThreshold)
+        if !ok </span><span class="cov8" title="1">{
+                return 1
+        }</span>
+
+        <span class="cov8" title="1">numKeys := 0
+        for _, subkey := range v.PubKeys </span><span class="cov8" title="1">{
+                numKeys += countSubKeys(subkey)
+        }</span>
+
+        <span class="cov8" title="1">return numKeys</span>
+}
+
+// GetSigners returns the addresses that must sign the transaction.
+// Addresses are returned in a deterministic order.
+// They are accumulated from the GetSigners method for each Msg
+// in the order they appear in tx.GetMsgs().
+// Duplicate addresses will be omitted.
+func (tx StdTx) GetSigners() []sdk.AccAddress <span class="cov8" title="1">{
+        seen := map[string]bool{}
+        var signers []sdk.AccAddress
+        for _, msg := range tx.GetMsgs() </span><span class="cov8" title="1">{
+                for _, addr := range msg.GetSigners() </span><span class="cov8" title="1">{
+                        if !seen[addr.String()] </span><span class="cov8" title="1">{
+                                signers = append(signers, addr)
+                                seen[addr.String()] = true
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return signers</span>
+}
+
+// GetMemo returns the memo
+func (tx StdTx) GetMemo() string <span class="cov8" title="1">{ return tx.Memo }</span>
+
+// GetSignatures returns the signature of signers who signed the Msg.
+// GetSignatures returns the signature of signers who signed the Msg.
+// CONTRACT: Length returned is same as length of
+// pubkeys returned from MsgKeySigners, and the order
+// matches.
+// CONTRACT: If the signature is missing (ie the Msg is
+// invalid), then the corresponding signature is
+// .Empty().
+func (tx StdTx) GetSignatures() []StdSignature <span class="cov8" title="1">{ return tx.Signatures }</span>
+
+//__________________________________________________________
+
+// StdFee includes the amount of coins paid in fees and the maximum
+// gas to be used by the transaction. The ratio yields an effective "gasprice",
+// which must be above some miminum to be accepted into the mempool.
+type StdFee struct {
+        Amount sdk.Coins `json:"amount"`
+        Gas    uint64    `json:"gas"`
+}
+
+// NewStdFee returns a new instance of StdFee
+func NewStdFee(gas uint64, amount sdk.Coins) StdFee <span class="cov8" title="1">{
+        return StdFee{
+                Amount: amount,
+                Gas:    gas,
+        }
+}</span>
+
+// Bytes for signing later
+func (fee StdFee) Bytes() []byte <span class="cov8" title="1">{
+        // normalize. XXX
+        // this is a sign of something ugly
+        // (in the lcd_test, client side its null,
+        // server side its [])
+        if len(fee.Amount) == 0 </span><span class="cov8" title="1">{
+                fee.Amount = sdk.NewCoins()
+        }</span>
+        <span class="cov8" title="1">bz, err := msgCdc.MarshalJSON(fee) // TODO
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+        <span class="cov8" title="1">return bz</span>
+}
+
+// GasPrices returns the gas prices for a StdFee.
+//
+// NOTE: The gas prices returned are not the true gas prices that were
+// originally part of the submitted transaction because the fee is computed
+// as fee = ceil(gasWanted * gasPrices).
+func (fee StdFee) GasPrices() sdk.DecCoins <span class="cov0" title="0">{
+        return sdk.NewDecCoins(fee.Amount).QuoDec(sdk.NewDec(int64(fee.Gas)))
+}</span>
+
+//__________________________________________________________
+
+// StdSignDoc is replay-prevention structure.
+// It includes the result of msg.GetSignBytes(),
+// as well as the ChainID (prevent cross chain replay)
+// and the Sequence numbers for each signature (prevent
+// inchain replay and enforce tx ordering per account).
+type StdSignDoc struct {
+        AccountNumber uint64            `json:"account_number"`
+        ChainID       string            `json:"chain_id"`
+        Fee           json.RawMessage   `json:"fee"`
+        Memo          string            `json:"memo"`
+        Msgs          []json.RawMessage `json:"msgs"`
+        Sequence      uint64            `json:"sequence"`
+}
+
+// StdSignBytes returns the bytes to sign for a transaction.
+func StdSignBytes(chainID string, accnum uint64, sequence uint64, fee StdFee, msgs []sdk.Msg, memo string) []byte <span class="cov8" title="1">{
+        var msgsBytes []json.RawMessage
+        for _, msg := range msgs </span><span class="cov8" title="1">{
+                msgsBytes = append(msgsBytes, json.RawMessage(msg.GetSignBytes()))
+        }</span>
+        <span class="cov8" title="1">bz, err := msgCdc.MarshalJSON(StdSignDoc{
+                AccountNumber: accnum,
+                ChainID:       chainID,
+                Fee:           json.RawMessage(fee.Bytes()),
+                Memo:          memo,
+                Msgs:          msgsBytes,
+                Sequence:      sequence,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+        <span class="cov8" title="1">return sdk.MustSortJSON(bz)</span>
+}
+
+// StdSignature represents a sig
+type StdSignature struct {
+        PubKey       crypto.PubKey  `json:"pub_key"` // optional (?)
+        Signature    []byte         `json:"signature"`
+    PubKeyIndex  uint           `json:"pub_key_idx"`
+}
+
+type DailyFeeSpend struct {
+    Address      sdk.AccAddress
+    SubKeyIndex  uint
+    FeeSpent     sdk.Coins
+}
+
+
+// DefaultTxDecoder logic for standard transaction decoding
+func DefaultTxDecoder(cdc *codec.Codec) sdk.TxDecoder <span class="cov0" title="0">{
+        return func(txBytes []byte) (sdk.Tx, sdk.Error) </span><span class="cov0" title="0">{
+                var tx = StdTx{}
+
+                if len(txBytes) == 0 </span><span class="cov0" title="0">{
+                        return nil, sdk.ErrTxDecode("txBytes are empty")
+                }</span>
+
+                // StdTx.Msg is an interface. The concrete types
+                // are registered by MakeTxCodec
+                <span class="cov0" title="0">err := cdc.UnmarshalBinaryLengthPrefixed(txBytes, &amp;tx)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, sdk.ErrTxDecode("error decoding transaction").TraceSDK(err.Error())
+                }</span>
+
+                <span class="cov0" title="0">return tx, nil</span>
+        }
+}
+
+// DefaultTxEncoder logic for standard transaction encoding
+func DefaultTxEncoder(cdc *codec.Codec) sdk.TxEncoder <span class="cov8" title="1">{
+        return func(tx sdk.Tx) ([]byte, error) </span><span class="cov8" title="1">{
+                return cdc.MarshalBinaryLengthPrefixed(tx)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">// nolint
+package auth
+
+import (
+        abci "github.com/tendermint/tendermint/abci/types"
+        "github.com/tendermint/tendermint/crypto"
+        "github.com/tendermint/tendermint/crypto/secp256k1"
+        dbm "github.com/tendermint/tendermint/libs/db"
+        "github.com/tendermint/tendermint/libs/log"
+
+        "github.com/cosmos/cosmos-sdk/codec"
+        "github.com/cosmos/cosmos-sdk/store"
+        sdk "github.com/cosmos/cosmos-sdk/types"
+        "github.com/cosmos/cosmos-sdk/x/params"
+)
+
+type testInput struct {
+        cdc *codec.Codec
+        ctx sdk.Context
+        ak  AccountKeeper
+        fck FeeCollectionKeeper
+}
+
+func setupTestInput() testInput <span class="cov8" title="1">{
+        db := dbm.NewMemDB()
+
+        cdc := codec.New()
+        RegisterBaseAccount(cdc)
+
+        authCapKey := sdk.NewKVStoreKey("authCapKey")
+        fckCapKey := sdk.NewKVStoreKey("fckCapKey")
+        keyParams := sdk.NewKVStoreKey("params")
+        tkeyParams := sdk.NewTransientStoreKey("transient_params")
+
+        ms := store.NewCommitMultiStore(db)
+        ms.MountStoreWithDB(authCapKey, sdk.StoreTypeIAVL, db)
+        ms.MountStoreWithDB(fckCapKey, sdk.StoreTypeIAVL, db)
+        ms.MountStoreWithDB(keyParams, sdk.StoreTypeIAVL, db)
+        ms.MountStoreWithDB(tkeyParams, sdk.StoreTypeTransient, db)
+        ms.LoadLatestVersion()
+
+        pk := params.NewKeeper(cdc, keyParams, tkeyParams)
+        ak := NewAccountKeeper(cdc, authCapKey, pk.Subspace(DefaultParamspace), ProtoBaseAccount)
+        fck := NewFeeCollectionKeeper(cdc, fckCapKey)
+        ctx := sdk.NewContext(ms, abci.Header{ChainID: "test-chain-id"}, false, log.NewNopLogger())
+
+        ak.SetParams(ctx, DefaultParams())
+
+        return testInput{cdc: cdc, ctx: ctx, ak: ak, fck: fck}
+}</span>
+
+func newTestMsg(addrs ...sdk.AccAddress) *sdk.TestMsg <span class="cov8" title="1">{
+        return sdk.NewTestMsg(addrs...)
+}</span>
+
+func newStdFee() StdFee <span class="cov8" title="1">{
+        return NewStdFee(50000,
+                sdk.NewCoins(sdk.NewInt64Coin("atom", 150)),
+        )
+}</span>
+
+// coins to more than cover the fee
+func newCoins() sdk.Coins <span class="cov8" title="1">{
+        return sdk.Coins{
+                sdk.NewInt64Coin("atom", 10000000),
+        }
+}</span>
+
+func keyPubAddr() (crypto.PrivKey, crypto.PubKey, sdk.AccAddress) <span class="cov8" title="1">{
+        key := secp256k1.GenPrivKey()
+        pub := key.PubKey()
+        addr := sdk.AccAddress(pub.Address())
+        return key, pub, addr
+}</span>
+
+func newTestTx(ctx sdk.Context, msgs []sdk.Msg, privs []crypto.PrivKey, accNums []uint64, seqs []uint64, fee StdFee) sdk.Tx <span class="cov8" title="1">{
+        sigs := make([]StdSignature, len(privs))
+        for i, priv := range privs </span><span class="cov8" title="1">{
+                signBytes := StdSignBytes(ctx.ChainID(), accNums[i], seqs[i], fee, msgs, "")
+
+                sig, err := priv.Sign(signBytes)
+                if err != nil </span><span class="cov0" title="0">{
+                        panic(err)</span>
+                }
+
+                <span class="cov8" title="1">sigs[i] = StdSignature{PubKey: priv.PubKey(), Signature: sig}</span>
+        }
+
+        <span class="cov8" title="1">tx := NewStdTx(msgs, fee, sigs, "")
+        return tx</span>
+}
+
+func newTestTxWithMemo(ctx sdk.Context, msgs []sdk.Msg, privs []crypto.PrivKey, accNums []uint64, seqs []uint64, fee StdFee, memo string) sdk.Tx <span class="cov8" title="1">{
+        sigs := make([]StdSignature, len(privs))
+        for i, priv := range privs </span><span class="cov8" title="1">{
+                signBytes := StdSignBytes(ctx.ChainID(), accNums[i], seqs[i], fee, msgs, memo)
+
+                sig, err := priv.Sign(signBytes)
+                if err != nil </span><span class="cov0" title="0">{
+                        panic(err)</span>
+                }
+
+                <span class="cov8" title="1">sigs[i] = StdSignature{PubKey: priv.PubKey(), Signature: sig}</span>
+        }
+
+        <span class="cov8" title="1">tx := NewStdTx(msgs, fee, sigs, memo)
+        return tx</span>
+}
+
+func newTestTxWithSignBytes(msgs []sdk.Msg, privs []crypto.PrivKey, accNums []uint64, seqs []uint64, fee StdFee, signBytes []byte, memo string) sdk.Tx <span class="cov8" title="1">{
+        sigs := make([]StdSignature, len(privs))
+        for i, priv := range privs </span><span class="cov8" title="1">{
+                sig, err := priv.Sign(signBytes)
+                if err != nil </span><span class="cov0" title="0">{
+                        panic(err)</span>
+                }
+
+                <span class="cov8" title="1">sigs[i] = StdSignature{PubKey: priv.PubKey(), Signature: sig}</span>
+        }
+
+        <span class="cov8" title="1">tx := NewStdTx(msgs, fee, sigs, memo)
+        return tx</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
