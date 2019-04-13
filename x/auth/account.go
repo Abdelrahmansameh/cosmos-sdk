@@ -511,3 +511,144 @@ func (dva *DelayedVestingAccount) GetStartTime() int64 {
 func (dva *DelayedVestingAccount) GetEndTime() int64 {
 	return dva.EndTime
 }
+
+//-----------------------------------------------------------------------------
+// SubKeys
+
+type SubKeyMetadata struct {
+    PubKey              sdk.AccPubKey  `json:"public_key"`
+    PermissionedRoutes  []string       `json:"permission_routes"`
+    DailyFeeAllowance   sdk.Coins      `json:"daily_fee_allowance"`
+    DailyFeeUsed        sdk.Coins      `json:"daily_fee_used"`
+    Revoked             bool           `json:"revoked"`
+}
+
+// String implements fmt.Stringer
+func (sk SubKeyMetadata) String() string {
+	var pubkey string
+
+	if acc.PubKey != nil {
+		pubkey = sdk.MustBech32ifyAccPub(sk.PubKey)
+	}
+
+	return fmt.Sprintf(`SubKey Metadata:
+  PubKey:             %s
+  PermissionedRoutes: %v
+  DailyFeeAllowance:  %v
+  DailyFeeUsed:       %v
+  Revoked:            %t`,
+		pubkey, sk.PermissionedRoutes,
+        sk.DailyFeeAllowance, sk.DailyFeeUsed, sk.Revoked,
+	)
+}
+
+var _ Account = (*SubKeyAccount)(nil)
+
+// SubKeyAccount - an account structure that handles subkeys
+type SubKeyAccount struct {
+	Address        sdk.AccAddress    `json:"address"`
+	Coins          sdk.Coins         `json:"coins"`
+	PubKey         crypto.PubKey     `json:"public_key"`
+	AccountNumber  uint64            `json:"account_number"`
+	Sequence       uint64            `json:"sequence"`
+    SubKeys        []SubKeyMetadata  `json:"subkeys"`
+}
+
+// String implements fmt.Stringer
+func (acc SubKeyAccount) String() string {
+	var pubkey string
+
+	if acc.PubKey != nil {
+		pubkey = sdk.MustBech32ifyAccPub(acc.PubKey)
+	}
+
+	return fmt.Sprintf(`Account:
+  Address:       %s
+  PubKey:        %s
+  Coins:         %s
+  AccountNumber: %d
+  Sequence:      %d
+  SubKeys:       %d`,
+		acc.Address, pubkey, acc.Coins,
+        acc.AccountNumber, acc.Sequence, len(acc.SubKeys),
+	)
+}
+
+// ProtoSubKeyAccount - a prototype function for SubKeyAccount
+func ProtoSubKeyAccount() Account {
+	return &SubKeyAccount{}
+}
+
+// NewSubKeyAccountWithAddress - returns a new base account with a given address
+func NewSubKeyAccountWithAddress(addr sdk.AccAddress) SubKeyAccount {
+	return SubKeyAccount{
+		Address: addr,
+	}
+}
+
+// GetAddress - Implements sdk.Account.
+func (acc SubKeyAccount) GetAddress() sdk.AccAddress {
+	return acc.Address
+}
+
+// SetAddress - Implements sdk.Account.
+func (acc *SubKeyAccount) SetAddress(addr sdk.AccAddress) error {
+	if len(acc.Address) != 0 {
+		return errors.New("cannot override SubKeyAccount address")
+	}
+	acc.Address = addr
+	return nil
+}
+
+// GetPubKey - Implements sdk.Account.
+func (acc SubKeyAccount) GetPubKey() crypto.PubKey {
+	return acc.PubKey
+}
+
+// SetPubKey - Implements sdk.Account.
+func (acc *SubKeyAccount) SetPubKey(pubKey crypto.PubKey) error {
+	acc.PubKey = pubKey
+	return nil
+}
+
+// GetCoins - Implements sdk.Account.
+func (acc *SubKeyAccount) GetCoins() sdk.Coins {
+	return acc.Coins
+}
+
+// SetCoins - Implements sdk.Account.
+func (acc *SubKeyAccount) SetCoins(coins sdk.Coins) error {
+	acc.Coins = coins
+	return nil
+}
+
+// GetAccountNumber - Implements Account
+func (acc *SubKeyAccount) GetAccountNumber() uint64 {
+	return acc.AccountNumber
+}
+
+// SetAccountNumber - Implements Account
+func (acc *SubKeyAccount) SetAccountNumber(accNumber uint64) error {
+	acc.AccountNumber = accNumber
+	return nil
+}
+
+// GetSequence - Implements sdk.Account.
+func (acc *SubKeyAccount) GetSequence() uint64 {
+	return acc.Sequence
+}
+
+// SetSequence - Implements sdk.Account.
+func (acc *SubKeyAccount) SetSequence(seq uint64) error {
+	acc.Sequence = seq
+	return nil
+}
+
+// SpendableCoins returns the total set of spendable coins. For a base account,
+// this is simply the base coins.
+func (acc *SubKeyAccount) SpendableCoins(_ time.Time) sdk.Coins {
+	return acc.GetCoins()
+}
+
+// SubKeyAccount specific
+
