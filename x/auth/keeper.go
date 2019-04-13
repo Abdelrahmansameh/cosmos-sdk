@@ -95,6 +95,9 @@ func (ak AccountKeeper) GetAccount(ctx sdk.Context, addr sdk.AccAddress) Account
 		return nil
 	}
 	acc := ak.decodeAccount(bz)
+    if acc.(type) == BaseAccount { // ensures we always get a SubKeyAccount
+        acc = acc.ToSubKeyAcc()
+    }
 	return acc
 }
 
