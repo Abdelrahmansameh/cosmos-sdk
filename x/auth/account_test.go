@@ -481,7 +481,7 @@ func TestTrackUndelegationDelVestingAcc(t *testing.T) {
 	require.Equal(t, sdk.Coins{sdk.NewInt64Coin(feeDenom, 1000), sdk.NewInt64Coin(stakeDenom, 75)}, dva.GetCoins())
 }
 
-func TestSubKey(t *testing.T) {
+func TestSubKeyAccountAddressPubKey(t *testing.T) {
     _, pub1, addr1 := keyPubAddr()
     _, pub2, addr2 := keyPubAddr()
     acc := NewSubKeyAccountWithAddress(addr1)
@@ -510,5 +510,27 @@ func TestSubKey(t *testing.T) {
     err = acc2.SetAddress(addr2)
     require.Nil(t, err)
     require.EqualValues(t, addr2, acc2.GetAddress())
+}
+
+func TestSubKeyAccountCoins(t *testing.T) {
+    _, _, addr := keyPubAddr()
+    acc := NewSubKeyAccountWithAddress(addr)
+
+    someCoins := sdk.Coins{sdk.NewInt64Coin("atom", 444), sdk.NewInt64Coin("eth", 555)}
+    
+    err := acc.SetCoins(someCoins)
+    require.Nil(t, err)
+    require.Equal(t, someCoins, acc.GetCoins())
+}
+
+func TestSubKeyAccountSequence(t *testing.T) {
+    _, _, addr := keyPubAddr()
+    acc := NewSubKeyAccountWithAddress(addr)
+
+    seq := uint64(69)
+    
+    err := acc.SetSequence(seq)
+    require.Nil(t, err)
+    require.Equal(t, seq, acc.GetSequence())
 }
 
