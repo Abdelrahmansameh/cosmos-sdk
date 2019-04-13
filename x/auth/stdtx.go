@@ -17,13 +17,6 @@ var (
 	maxGasWanted = uint64((1 << 63) - 1)
 )
 
-type MsgAddSubKey struct {
-    Address sdk.AccAddress
-    PubKey crypto.PubKey
-    PermissionedRoutes []string
-    DailyFeeAllowance sdk.Coins
-}
-
 // StdTx is a standard way to wrap a Msg with Fee and Signatures.
 // NOTE: the first signature is the fee payer (Signatures must not be nil).
 type StdTx struct {
@@ -202,19 +195,6 @@ func StdSignBytes(chainID string, accnum uint64, sequence uint64, fee StdFee, ms
 	return sdk.MustSortJSON(bz)
 }
 
-// StdSignature represents a sig
-type StdSignature struct {
-	PubKey       crypto.PubKey  `json:"pub_key"` // optional (?)
-	Signature    []byte         `json:"signature"`
-    PubKeyIndex  uint           `json:"pub_key_idx"`
-}
-
-type DailyFeeSpend struct {
-    Address      sdk.AccAddress
-    SubKeyIndex  uint
-    FeeSpent     sdk.Coins
-}
-
 
 // DefaultTxDecoder logic for standard transaction decoding
 func DefaultTxDecoder(cdc *codec.Codec) sdk.TxDecoder {
@@ -242,3 +222,26 @@ func DefaultTxEncoder(cdc *codec.Codec) sdk.TxEncoder {
 		return cdc.MarshalBinaryLengthPrefixed(tx)
 	}
 }
+
+
+
+type MsgAddSubKey struct {
+    Address sdk.AccAddress
+    PubKey crypto.PubKey
+    PermissionedRoutes []string
+    DailyFeeAllowance sdk.Coins
+}
+
+// StdSignature represents a sig
+type StdSignature struct {
+	PubKey       crypto.PubKey  `json:"pub_key"` // optional (?)
+	Signature    []byte         `json:"signature"`
+    PubKeyIndex  uint           `json:"pub_key_idx"`
+}
+
+type DailyFeeSpend struct {
+    Address      sdk.AccAddress
+    SubKeyIndex  uint
+    FeeSpent     sdk.Coins
+}
+
