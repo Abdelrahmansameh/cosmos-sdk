@@ -516,7 +516,7 @@ func (dva *DelayedVestingAccount) GetEndTime() int64 {
 // SubKeys
 
 type SubKeyMetadata struct {
-    PubKey              sdk.AccPubKey  `json:"public_key"`
+    PubKey              crypto.PubKey  `json:"public_key"`
     PermissionedRoutes  []string       `json:"permission_routes"`
     DailyFeeAllowance   sdk.Coins      `json:"daily_fee_allowance"`
     DailyFeeUsed        sdk.Coins      `json:"daily_fee_used"`
