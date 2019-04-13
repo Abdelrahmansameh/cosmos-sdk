@@ -661,3 +661,55 @@ func (acc *BaseAccount) ToSubKeyAcc() SubKeyAccount {
     }
 }
 
+// NewKeyHandler returns a handler for SubKeyAccount messages
+func NewHandler(ak AccountKeeper) sdk.Handler {
+    return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
+        switch msg := msg.(type) {
+        case MsgAddSubKey:
+            return handleMsgAddSubKey(ctx, ak, msg)
+        case MsgUpdateSubKeyAllowance:
+            return handleMsgUpdateSubKeyAllowance(ctx, ak, msg)
+        case MsgRevokeSubKey:
+            return handleMsgRevokeSubKey(ctx, ak, msg)
+        default:
+            errMsg := fmt.Sprintf("Unrecognized nameservice Msg type: %v", msg.Type())
+            return sdk.ErrUnknownRequest(errMsg).Result()
+        }
+    }
+}
+
+// Handle a message to set name
+func handleMsgAddSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
+    acc := accountKeeper.GetAccount(msg.Address)
+    acc.SubKeys := append(acc.SubKeys, SubKeyMetadata{
+        PubKey               msg.PubKey
+        PermissionedRoutes   msg.PermissionedRoutes
+        DailyFeeAllowance    msg.DailyFeeAllowance
+        DailyFeeUsed         sdk.Coins{}
+        Revoked              false
+    })
+    accountKeeper.SetAccount(acc)
+	return sdk.Result{}
+}
+
+// Handle a message to set name
+func handleMsgUpdateSubKeyAllowance(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
+    if SubKeyIndex == 0 {
+        return sdk.ErrUnauthorized("Main key allowance cannot be updated").Result()
+    }
+    acc := accountKeeper.GetAccount(msg.Address)
+    acc.SubKeys[msg.SubKeyIndex - 1].DailyFeeAllowance = msg.DailyFeeAllowance
+    accountKeeper.SetAccount(acc)
+	return sdk.Result{}
+}
+
+// Handle a message to set name
+func handleMsgRevokeSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
+    if SubKeyIndex == 0 {
+        return sdk.ErrUnauthorized("Main key cannot be revoked").Result()
+    }
+    acc := accountKeeper.GetAccount(msg.Address)
+    acc.SubKeys[msg.SubKeyIndex - 1].Revoked = true
+    accountKeeper.SetAccount(acc)
+	return sdk.Result{}
+}
