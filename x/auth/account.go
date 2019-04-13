@@ -651,7 +651,7 @@ func (acc *SubKeyAccount) SpendableCoins(_ time.Time) sdk.Coins {
 }
 
 // convert BaseAccount to SubKeyAccount
-func (acc *BaseAccount) ToSubKeysAcc() SubKeyAccount {
+func (acc *BaseAccount) ToSubKeyAcc() SubKeyAccount {
     return SubKeyAccount{
         Address:        acc.Address,
         Coins:          acc.Coins,

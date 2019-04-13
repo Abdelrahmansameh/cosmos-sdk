@@ -19,7 +19,7 @@ var (
 
 type MsgAddSubKey struct {
     Address sdk.AccAddress
-    PubKey sdk.AccPubKey
+    PubKey crypto.PubKey
     PermissionedRoutes []string
     DailyFeeAllowance sdk.Coins
 }
