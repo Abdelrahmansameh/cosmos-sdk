@@ -527,7 +527,7 @@ type SubKeyMetadata struct {
 func (sk SubKeyMetadata) String() string {
 	var pubkey string
 
-	if acc.PubKey != nil {
+	if sk.PubKey != nil {
 		pubkey = sdk.MustBech32ifyAccPub(sk.PubKey)
 	}
 
