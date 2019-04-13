@@ -3,7 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-
+	"bytes"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/multisig"
 
@@ -231,6 +231,46 @@ type MsgAddSubKey struct {
     PermissionedRoutes []string
     DailyFeeAllowance sdk.Coins
 }
+
+func NewMsgAddSubKey(address sdk.AccAddress, pubKey crypto.PubKey, permissionedRoutes []string, dailyFeeAllowance sdk.Coins) MsgAddSubKey {
+	return MsgAddSubKey{
+			Address: address,
+			PubKey : pubKey,
+			PermissionedRoutes: permissionedRoutes,
+			DailyFeeAllowance : dailyFeeAllowance, 
+	}
+}
+
+func (msg MsgAddSubKey) Route() string {return "auth"}
+
+func (msg MsgAddSubKey) Type() string {return "add_subkey"}
+
+func (msg MsgAddSubKey) ValidateBasic() sdk.Error{
+
+	if msg.Address.Empty(){
+		return sdk.ErrInvalidAddress(msg.Address.String())
+	}
+
+	if bytes.Equal(msg.PubKey.Address(), msg.Address){
+		return sdk.ErrUnauthorized("Key does not belong to address")
+	}
+	return nil
+}
+
+func (msg MsgAddSubKey) GetSignBytes() []byte{
+	b, err := json.Marshal(msg)
+	if err != nil{
+		panic(err)
+	}
+	return sdk.MustSortJSON(b)
+}
+
+func (msg MsgAddSubKey) GetSigners() []sdk.AccAddress{
+	return []sdk.AccAddress{msg.Address}
+}
+
+
+
 
 // StdSignature represents a sig
 type StdSignature struct {
