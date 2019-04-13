@@ -661,4 +661,3 @@ func (acc *BaseAccount) ToSubKeyAcc() SubKeyAccount {
     }
 }
 
-func (acc *SubKeyAccount) AddSubkey(tx info)  
