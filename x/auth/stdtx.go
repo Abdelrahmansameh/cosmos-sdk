@@ -332,6 +332,9 @@ func (msg MsgRevokeSubKey) GetSignBytes() []byte{
 	return sdk.MustSortJSON(b) 
 }
 
+func (msg MsgRevokeSubKey) GetSigners() []sdk.AccAddress{
+	return []sdk.AccAddress{msg.Address}
+}
 // StdSignature represents a sig
 type StdSignature struct {
 	PubKey       crypto.PubKey  `json:"pub_key"` // optional (?)
