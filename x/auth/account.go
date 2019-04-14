@@ -694,7 +694,8 @@ func handleMsgAddSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk
 	return sdk.Result{}
     } else {
         return sdk.ErrUnauthorized("Not good account type").Result()
-    }
+		}
+		return sdk.Result{}
 }
 
 // Handle a message to set name
@@ -710,7 +711,8 @@ func handleMsgUpdateSubKeyAllowance(ctx sdk.Context, ak AccountKeeper, msg MsgAd
         return sdk.Result{}
     } else {
         return sdk.ErrUnauthorized("Not good account type").Result()
-    }
+		}
+		return sdk.Result{}
 }
 
 // Handle a message to set name
@@ -726,5 +728,6 @@ func handleMsgRevokeSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) 
         return sdk.Result{}
     } else {
         return sdk.ErrUnauthorized("Not good account type").Result()
-    }
+		}
+		return sdk.Result{}
 }
