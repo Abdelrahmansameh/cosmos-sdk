@@ -285,10 +285,10 @@ func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey,
 		}
 	}
 
-	else{
+	else {
 		pubKey := acc.SubKeys[PubKeyIndex - 1]
 		if pubKey == nil && pubKey.Revoked {
-			return nil, sdk.ErrNotPermitted("PubKey does not exist or has been revoked.")
+			return nil, sdk.ErrNotPermitted("PubKey does not exist or has been revoked.").Result()
 		}
 	}
 
