@@ -134,7 +134,7 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                         return newCtx, res, true
                     }
 
-                    acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.Sub(stdTx.Fee.Amount)
+                    acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.Add(stdTx.Fee.Amount)
 
                     fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
                 }
