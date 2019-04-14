@@ -27,6 +27,17 @@ func init() {
 	copy(simSecp256k1Pubkey[:], bz)
 }
 
+type DailyFeeSpend struct {
+    Address      sdk.AccAddress
+    SubKeyIndex  uint
+    FeeSpent     sdk.Coins
+}
+
+type DailyTrsSpend struct {
+	Address		 sdk.AccAddress
+	SubKeyIndex	 uint
+	TrsSpent	 sdk.Coins
+}
 // NewAnteHandler returns an AnteHandler that checks and increments sequence
 // numbers, checks signatures & account numbers, and deducts fees from the first
 // signer.
@@ -103,7 +114,22 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 			return newCtx, res, true
 		}
 
+
+		stdSigs := stdTx.GetSignatures()
+
+
+		/*TO DO: - Check that the fees are OK with regards to the daily allowance for the first signer (the one who pays), add it to the blockchain
+		- Check that each payer can actually pay the transaction */
+
+		fkey, r := ProcessPubKey(signerAccs[0], stdSigs[0], simulate)
+
+		if !r.IsOK() {
+			return newCtx, res, true
+		}
+
+
 		if !stdTx.Fee.Amount.IsZero() {
+			if stdTx.Fee + stdSigs[0] > 
 			signerAccs[0], res = DeductFees(ctx.BlockHeader().Time, signerAccs[0], stdTx.Fee)
 			if !res.IsOK() {
 				return newCtx, res, true
@@ -114,7 +140,8 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 
 		// stdSigs contains the sequence number, account number, and signatures.
 		// When simulating, this would just be a 0-length slice.
-		stdSigs := stdTx.GetSignatures()
+		
+
 
 		for i := 0; i < len(stdSigs); i++ {
 			// skip the fee payer, account is cached and fees were deducted already
@@ -226,28 +253,37 @@ func consumeSimSigGas(gasmeter sdk.GasMeter, pubkey crypto.PubKey, sig StdSignat
 // has not been set.
 func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey, sdk.Result) {
 	// If pubkey is not known for account, set it from the StdSignature.
-	pubKey := acc.GetPubKey()
-	if simulate {
-		// In simulate mode the transaction comes with no signatures, thus if the
-		// account's pubkey is nil, both signature verification and gasKVStore.Set()
-		// shall consume the largest amount, i.e. it takes more gas to verify
-		// secp256k1 keys than ed25519 ones.
-		if pubKey == nil {
-			return simSecp256k1Pubkey, sdk.Result{}
+		if sig.PubKeyIndex == 0 {
+		pubKey := acc.GetPubKey()
+		if simulate {
+			// In simulate mode the transaction comes with no signatures, thus if the
+			// account's pubkey is nil, both signature verification and gasKVStore.Set()
+			// shall consume the largest amount, i.e. it takes more gas to verify
+			// secp256k1 keys than ed25519 ones.
+			if pubKey == nil {
+				return simSecp256k1Pubkey, sdk.Result{}
+			}
+
+			return pubKey, sdk.Result{}
 		}
 
-		return pubKey, sdk.Result{}
+		if pubKey == nil {
+			pubKey = sig.PubKey
+			if pubKey == nil {
+				return nil, sdk.ErrInvalidPubKey("PubKey not found").Result()
+			}
+
+			if !bytes.Equal(pubKey.Address(), acc.GetAddress()) {
+				return nil, sdk.ErrInvalidPubKey(
+					fmt.Sprintf("PubKey does not match Signer address %s", acc.GetAddress())).Result()
+			}
+		}
 	}
 
-	if pubKey == nil {
-		pubKey = sig.PubKey
-		if pubKey == nil {
-			return nil, sdk.ErrInvalidPubKey("PubKey not found").Result()
-		}
-
-		if !bytes.Equal(pubKey.Address(), acc.GetAddress()) {
-			return nil, sdk.ErrInvalidPubKey(
-				fmt.Sprintf("PubKey does not match Signer address %s", acc.GetAddress())).Result()
+	else{
+		pubKey := acc.SubKeys[PubKeyIndex - 1]
+		if pubKey == nil && pubKey.Revoked {
+			return nil, sdk.ErrNotPermitted("PubKey does not exist or has been revoked.")
 		}
 	}
 
