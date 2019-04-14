@@ -56,7 +56,7 @@ def main():
         elif line in ["testnet start", "testnet init"]:
             testnet_start()
         elif line == "clean":
-            execute("rm -f $HOME/.gaiad/config/addrbook.json $HOME/.gaiad/config/genesis.json $HOME/.gaiad/config/gent*.json")
+            execute("rm -rf $HOME/.gaiad/config/addrbook.json $HOME/.gaiad/config/genesis.json $HOME/.gaiad/config/gentx")
             execute("gaiad unsafe-reset-all")
         else:
             print("Invalid command")
