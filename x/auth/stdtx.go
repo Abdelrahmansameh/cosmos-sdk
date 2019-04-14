@@ -338,10 +338,3 @@ type StdSignature struct {
 	Signature    []byte         `json:"signature"`
     PubKeyIndex  uint           `json:"pub_key_idx"`
 }
-
-type DailyFeeSpend struct {
-    Address      sdk.AccAddress
-    SubKeyIndex  uint
-    FeeSpent     sdk.Coins
-}
-
