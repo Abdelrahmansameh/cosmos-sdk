@@ -269,9 +269,34 @@ func (msg MsgAddSubKey) GetSigners() []sdk.AccAddress{
 	return []sdk.AccAddress{msg.Address}
 }
 
+type MsgUpdateSubKeyAllowance struct {
+	Address sdk.accAddress
+	SubKeyIndex uint
+	DailyFeeAllowance sdk.Coins
+}
 
+func (msg MsgUpdateSubKeyAllowance) Route() string {return "auth"}
 
+func (msg MsgUpdateSubKeyAllowance) Type() string {return "update_subkey_allowance"}
 
+func (msg MsgUpdateSubKeyAllowance) ValidateBasic() sdk.Error{
+	if msg.Address.Empty(){
+		return sdk.ErrInvalidAddress(msg.Address.String())
+	}
+
+	if msg.SubKeyIndex <= 0{
+		return sdk.ErrUnauthorized(" Index can not be negative ")
+	}
+	return nil
+}
+
+func (msg MsgUpdateSubKeyAllowance) GetSignBytes() []bytes{
+	b, err := json.Marshal(msg)
+	if err != nil{
+		panic(err)
+	}
+	return sdk.MustSortJSON(b) 
+}
 // StdSignature represents a sig
 type StdSignature struct {
 	PubKey       crypto.PubKey  `json:"pub_key"` // optional (?)
