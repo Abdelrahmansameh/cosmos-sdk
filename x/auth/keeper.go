@@ -2,7 +2,7 @@ package auth
 
 import (
 	"fmt"
-
+	"time"
 	"github.com/tendermint/tendermint/crypto"
 
 	codec "github.com/cosmos/cosmos-sdk/codec"
@@ -24,6 +24,9 @@ const (
 var (
 	// AddressStoreKeyPrefix prefix for account-by-address store
 	AddressStoreKeyPrefix = []byte{0x01}
+
+	// FeeSpentPrefix prefix for dailyspendfeee-by-time store
+	FeeSpentPrefix = []byte{0x02}
 
 	globalAccountNumberKey = []byte("globalAccountNumber")
 )
@@ -223,3 +226,29 @@ func (ak AccountKeeper) decodeAccount(bz []byte) (acc Account) {
 	}
 	return
 }
+
+func RemoveOld(ctx sdk.Context, accountKeeper AccountKeeper) {
+    store := ctx.kvStore(accountKeeper.key) // this queue should hold the transactions
+	tmin := ctx.BlockTime.addDate(0, 0, -1) 
+	it := sdk.KVStorePrefixIterator(store, FeeSpentPrefix) 
+	defer it.Close()
+	for ; it.Valid(); it.Next(){
+		fee  := it.Value()
+		transactionTime := it.Key()
+		acc := accountKeeper.GetAccount(fee.Address)
+		if fee.SubKeyIndex > 0 && tmin > transactionTime {
+			acc.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed -= fee.FeeSpent
+			store.Delete(transactionTime)
+		}
+	}
+}
+    // pseudo code  TODO
+    /*
+    for fee:=store.Peek();fee!=nil && fee.BlockTime<tmax;fee=store.Peek() {
+        acc := accountKeeper.GetAccount(fee.Address)
+        if fee.SubKeyIndex > 0 {
+            acc.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed -= fee.FeeSpent
+        }
+        store.Delete(fee) or store.Pop()
+    }
+}*/
