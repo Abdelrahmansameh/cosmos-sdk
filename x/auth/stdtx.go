@@ -290,7 +290,7 @@ func (msg MsgUpdateSubKeyAllowance) ValidateBasic() sdk.Error{
 	return nil
 }
 
-func (msg MsgUpdateSubKeyAllowance) GetSignBytes() []bytes{
+func (msg MsgUpdateSubKeyAllowance) GetSignBytes() []byte{
 	b, err := json.Marshal(msg)
 	if err != nil{
 		panic(err)
@@ -299,7 +299,7 @@ func (msg MsgUpdateSubKeyAllowance) GetSignBytes() []bytes{
 }
 
 
-func (msg MsgAddSubKey) GetSigners() []sdk.AccAddress{
+func (msg MsgUpdateSubKeyAllowance) GetSigners() []sdk.AccAddress{
 	return []sdk.AccAddress{msg.Address}
 }
 
@@ -324,7 +324,7 @@ func (msg MsgRevokeSubKey) ValidateBasic() sdk.Error{
 	return nil
 }
 
-func (msg MsgRevokeSubKey) GetSignBytes() []bytes{
+func (msg MsgRevokeSubKey) GetSignBytes() []byte{
 	b, err := json.Marshal(msg)
 	if err != nil{
 		panic(err)
