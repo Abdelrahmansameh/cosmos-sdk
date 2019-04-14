@@ -3,7 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-
+	"bytes"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/multisig"
 
@@ -230,6 +230,111 @@ type MsgAddSubKey struct {
     PubKey crypto.PubKey
     PermissionedRoutes []string
     DailyFeeAllowance sdk.Coins
+}
+
+func NewMsgAddSubKey(address sdk.AccAddress, pubKey crypto.PubKey, permissionedRoutes []string, dailyFeeAllowance sdk.Coins) MsgAddSubKey {
+	return MsgAddSubKey{
+			Address: address,
+			PubKey : pubKey,
+			PermissionedRoutes: permissionedRoutes,
+			DailyFeeAllowance : dailyFeeAllowance, 
+	}
+}
+
+func (msg MsgAddSubKey) Route() string {return "auth"}
+
+func (msg MsgAddSubKey) Type() string {return "add_subkey"}
+
+func (msg MsgAddSubKey) ValidateBasic() sdk.Error{
+
+	if msg.Address.Empty(){
+		return sdk.ErrInvalidAddress(msg.Address.String())
+	}
+
+	if !bytes.Equal(msg.PubKey.Address(), msg.Address){
+		return sdk.ErrUnauthorized("Key does not belong to address")
+	}
+	return nil
+}
+
+func (msg MsgAddSubKey) GetSignBytes() []byte{
+	b, err := json.Marshal(msg)
+	if err != nil{
+		panic(err)
+	}
+	return sdk.MustSortJSON(b)
+}
+
+func (msg MsgAddSubKey) GetSigners() []sdk.AccAddress{
+	return []sdk.AccAddress{msg.Address}
+}
+
+type MsgUpdateSubKeyAllowance struct {
+	Address sdk.AccAddress
+	SubKeyIndex uint
+	DailyFeeAllowance sdk.Coins
+}
+
+func (msg MsgUpdateSubKeyAllowance) Route() string {return "auth"}
+
+func (msg MsgUpdateSubKeyAllowance) Type() string {return "update_subkey_allowance"}
+
+func (msg MsgUpdateSubKeyAllowance) ValidateBasic() sdk.Error{
+	if msg.Address.Empty(){
+		return sdk.ErrInvalidAddress(msg.Address.String())
+	}
+
+	if msg.SubKeyIndex <= 0{
+		return sdk.ErrUnauthorized(" Index can not be negative ")
+	}
+	return nil
+}
+
+func (msg MsgUpdateSubKeyAllowance) GetSignBytes() []bytes{
+	b, err := json.Marshal(msg)
+	if err != nil{
+		panic(err)
+	}
+	return sdk.MustSortJSON(b) 
+}
+
+
+func (msg MsgAddSubKey) GetSigners() []sdk.AccAddress{
+	return []sdk.AccAddress{msg.Address}
+}
+
+type MsgRevokeSubKey struct{
+	Address sdk.AccAddress
+	SubKeyIndex uint
+}
+
+func (msg MsgRevokeSubKey) Route() string {return "auth"}
+
+func (msg MsgRevokeSubKey) Type() string {return "revoke_sub_key"}
+
+func (msg MsgRevokeSubKey) ValidateBasic() sdk.Error{
+	
+	if msg.Address.Empty(){
+		return sdk.ErrInvalidAddress(msg.Address.String())
+	}
+	
+	if msg.SubKeyIndex <= 0{
+		return sdk.ErrUnauthorized(" Index can not be negative ")
+	}
+	return nil
+}
+
+func (msg MsgRevokeSubKey) GetSignBytes() []bytes{
+	b, err := json.Marshal(msg)
+	if err != nil{
+		panic(err)
+	}
+	return sdk.MustSortJSON(b) 
+}
+
+
+func (msg MsgRevokeSubKey) GetSigners() []sdk.AccAddress{
+	return []sdk.AccAddress{msg.Address}
 }
 
 // StdSignature represents a sig

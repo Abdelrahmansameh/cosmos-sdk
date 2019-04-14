@@ -667,3 +667,71 @@ func (acc *BaseAccount) ToSubKeyAcc() SubKeyAccount {
         Sequence:       acc.Sequence,
     }
 }
+
+// NewKeyHandler returns a handler for SubKeyAccount messages
+func NewHandler(ak AccountKeeper) sdk.Handler {
+    return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
+        switch msg := msg.(type) {
+        case MsgAddSubKey:
+            return handleMsgAddSubKey(ctx, ak, msg)
+        case MsgUpdateSubKeyAllowance:
+            return handleMsgUpdateSubKeyAllowance(ctx, ak, msg)
+        case MsgRevokeSubKey:
+            return handleMsgRevokeSubKey(ctx, ak, msg)
+        default:
+            errMsg := fmt.Sprintf("Unrecognized nameservice Msg type: %v", msg.Type())
+            return sdk.ErrUnknownRequest(errMsg).Result()
+        }
+    }
+}
+
+// Handle a message to set name
+func handleMsgAddSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
+    acc := ak.GetAccount(ctx,msg.Address)
+    _,b := acc.(SubKeyAccount)
+    if b {
+        acc.SubKeys = append(acc.SubKeys, SubKeyMetadata{
+            PubKey:              msg.PubKey,
+            PermissionedRoutes:  msg.PermissionedRoutes,
+            DailyFeeAllowance:   msg.DailyFeeAllowance,
+            DailyFeeUsed:        sdk.Coins{},
+            Revoked:             false,
+        })
+        ak.SetAccount(ctx,acc)
+	return sdk.Result{}
+    } else {
+        return sdk.ErrUnauthorized("Not good account type").Result()
+    }
+}
+
+// Handle a message to set name
+func handleMsgUpdateSubKeyAllowance(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
+    if SubKeyIndex == 0 {
+        return sdk.ErrUnauthorized("Main key allowance cannot be updated").Result()
+    }
+    acc := ak.GetAccount(ctx,msg.Address)
+    _,b := acc.(SubKeyAccount)
+    if b {
+        acc.SubKeys[msg.SubKeyIndex - 1].DailyFeeAllowance = msg.DailyFeeAllowance
+        ak.SetAccount(ctx,acc)
+        return sdk.Result{}
+    } else {
+        return sdk.ErrUnauthorized("Not good account type").Result()
+    }
+}
+
+// Handle a message to set name
+func handleMsgRevokeSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
+    if SubKeyIndex == 0 {
+        return sdk.ErrUnauthorized("Main key cannot be revoked").Result()
+    }
+    acc := ak.GetAccount(msg.Address)
+    _,b := acc.(SubKeyAccount)
+    if b {
+        acc.SubKeys[msg.SubKeyIndex - 1].Revoked = true
+        ak.SetAccount(ctx,acc)
+        return sdk.Result{}
+    } else {
+        return sdk.ErrUnauthorized("Not good account type").Result()
+    }
+}
