@@ -38,8 +38,6 @@ type Account interface {
 
 	// Ensure that account implements stringer
 	String() string
-
-	ToSubKeyAcc() SubKeyAccount
 }
 
 // VestingAccount defines an account type that vests coins via a vesting schedule.
