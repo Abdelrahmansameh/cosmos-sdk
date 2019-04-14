@@ -129,10 +129,14 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 			return newCtx, res, true
 		}
 
+		acc2,b := signerAccs[0].(*SubKeyAccount)
 
+		if !b {
+			return newCtx, sdk.ErrUnauthorized("Wrong account type, upgrade to latest release.").Result(), true
+		}
 		if !stdTx.Fee.Amount.IsZero() {
 			if stdTx.Fee + signerAccs[0].SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed > signerAccs[0].SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeAllowed{
-				return newCtx, sdk.ErrNotPermitted("The requested operation would go over the limit for of the Daily Fee Allowance"), true
+				return newCtx, sdk.ErrDailyFeeLimit("The requested operation would go over the limit for of the Daily Fee Allowance").Result(), true
 			}
 
 			signerAccs[0], res = DeductFees(ctx.BlockHeader().Time, signerAccs[0], stdTx.Fee)
@@ -152,8 +156,14 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 			// skip the fee payer, account is cached and fees were deducted already
 			if i != 0 {
 				signerAccs[i], res = GetSignerAcc(newCtx, ak, signerAddrs[i])
+
 				if !res.IsOK() {
 					return newCtx, res, true
+				}
+				acc2,b := signerAccs[0].(*SubKeyAccount)
+
+				if !b {
+					return newCtx, sdk.ErrUnauthorized("Wrong account type, upgrade to latest release.").Result(), true
 				}
 			}
 
@@ -258,6 +268,11 @@ func consumeSimSigGas(gasmeter sdk.GasMeter, pubkey crypto.PubKey, sig StdSignat
 // has not been set.
 func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey, sdk.Result) {
 	// If pubkey is not known for account, set it from the StdSignature.
+	acc2,b := acc.(*SubKeyAccount)
+
+	if !b {
+			return newCtx, sdk.ErrUnauthorized("Wrong account type, upgrade to latest release."), true
+	}
 	if sig.PubKeyIndex == 0 {
 		pubKey := acc.GetPubKey()
 		if simulate {
@@ -284,9 +299,9 @@ func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey,
 			}
 		}
 	} else {
-		pubKey := acc.SubKeys[PubKeyIndex - 1]
+		pubKey := acc2.SubKeys[sig.PubKeyIndex - 1]
 		if pubKey == nil && pubKey.Revoked {
-			return nil, sdk.ErrNotPermitted("PubKey does not exist or has been revoked.").Result()
+			return nil, sdk.ErrInvalidPubKey("PubKey does not exist or has been revoked.").Result()
 		}
 	}
 
