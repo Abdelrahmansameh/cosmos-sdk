@@ -251,7 +251,7 @@ func (msg MsgAddSubKey) ValidateBasic() sdk.Error{
 		return sdk.ErrInvalidAddress(msg.Address.String())
 	}
 
-	if bytes.Equal(msg.PubKey.Address(), msg.Address){
+	if !bytes.Equal(msg.PubKey.Address(), msg.Address){
 		return sdk.ErrUnauthorized("Key does not belong to address")
 	}
 	return nil
@@ -297,6 +297,46 @@ func (msg MsgUpdateSubKeyAllowance) GetSignBytes() []bytes{
 	}
 	return sdk.MustSortJSON(b) 
 }
+
+
+func (msg MsgAddSubKey) GetSigners() []sdk.AccAddress{
+	return []sdk.AccAddress{msg.Address}
+}
+
+type MsgRevokeSubKey struct{
+	Address sdk.AccAddress
+	SubKeyIndex uint
+}
+
+func (msg MsgRevokeSubKey) Route() string {return "auth"}
+
+func (msg MsgRevokeSubKey) Type() string {return "revoke_sub_key"}
+
+func (msg MsgRevokeSubKey) ValidateBasic() sdk.Error{
+	
+	if msg.Address.Empty(){
+		return sdk.ErrInvalidAddress(msg.Address.String())
+	}
+	
+	if msg.SubKeyIndex <= 0{
+		return sdk.ErrUnauthorized(" Index can not be negative ")
+	}
+	return nil
+}
+
+func (msg MsgRevokeSubKey) GetSignBytes() []bytes{
+	b, err := json.Marshal(msg)
+	if err != nil{
+		panic(err)
+	}
+	return sdk.MustSortJSON(b) 
+}
+
+
+func (msg MsgRevokeSubKey) GetSigners() []sdk.AccAddress{
+	return []sdk.AccAddress{msg.Address}
+}
+
 // StdSignature represents a sig
 type StdSignature struct {
 	PubKey       crypto.PubKey  `json:"pub_key"` // optional (?)
