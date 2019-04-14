@@ -711,10 +711,10 @@ func handleMsgUpdateSubKeyAllowance(ctx sdk.Context, ak AccountKeeper, msg MsgUp
         return sdk.ErrUnauthorized("Main key allowance cannot be updated").Result()
     }
     acc := ak.GetAccount(ctx,msg.Address)
-    _,b := acc.(SubKeyAccount)
+    acc2,b := acc.(SubKeyAccount)
     if b {
-        acc.SubKeys[msg.SubKeyIndex - 1].DailyFeeAllowance = msg.DailyFeeAllowance
-        ak.SetAccount(ctx,acc)
+        acc2.SubKeys[msg.SubKeyIndex - 1].DailyFeeAllowance = msg.DailyFeeAllowance
+        ak.SetAccount(ctx,acc2)
         return sdk.Result{}
     } else {
         return sdk.ErrUnauthorized("Not good account type").Result()
