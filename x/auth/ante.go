@@ -143,13 +143,8 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                         return newCtx, sdk.ErrFeeLimitReached("The requested operation would go over the limit for of the Daily Fee Allowance").Result(), true
                     }
 
-<<<<<<< HEAD
 					_, res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
 					
-=======
-                    acc0, res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
-
->>>>>>> cc81a45163bd7de64aaac0b2dfd0a10929359e01
                     if !res.IsOK() {
                         return newCtx, res, true
                     }
@@ -169,11 +164,7 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                         return newCtx, res, true
                     }
 
-<<<<<<< HEAD
         
-=======
-                    acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.Add(stdTx.Fee.Amount)
->>>>>>> c7ea7b7aae4ce482619b504e4b9b9735b5d838e0
 
                     fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
                 }
