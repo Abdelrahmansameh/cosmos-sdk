@@ -44,6 +44,7 @@ const (
 	CodeTooManySignatures CodeType = 15
 	CodeGasOverflow       CodeType = 16
 	CodeNoSignatures      CodeType = 17
+	CodeMsgRoute		  CodeType = 18
 
 	// CodespaceRoot is a codespace for error codes in this file only.
 	// Notice that 0 is an "unset" codespace, which can be overridden with
@@ -91,6 +92,8 @@ func CodeToDefaultMsg(code CodeType) string {
 		return "maximum numer of signatures exceeded"
 	case CodeNoSignatures:
 		return "no signatures supplied"
+	case CodeMsgRoute:
+		return "message route not permitted under subkey"
 	default:
 		return unknownCodeMsg(code)
 	}
@@ -153,6 +156,9 @@ func ErrGasOverflow(msg string) Error {
 	return newErrorWithRootCodespace(CodeGasOverflow, msg)
 }
 
+func ErrMsgRoute(msg string) Error {
+	return newErrorWithRootCodespace(CodeMsgRoute, msg)
+}
 //----------------------------------------
 // Error & sdkError
 

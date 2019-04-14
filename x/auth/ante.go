@@ -259,6 +259,11 @@ func consumeSimSigGas(gasmeter sdk.GasMeter, pubkey crypto.PubKey, sig StdSignat
 // has not been set.
 func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey, sdk.Result) {
 	// If pubkey is not known for account, set it from the StdSignature.
+	acc2,b := acc.(*SubKeyAccount)
+
+	if !b {
+			return newCtx, sdk.ErrUnauthorized("Wrong account type, upgrade to latest release."), true
+	}
 	if sig.PubKeyIndex == 0 {
 		pubKey := acc.GetPubKey()
 		if simulate {
@@ -286,13 +291,9 @@ func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey,
 		}
 		return pubKey, sdk.Result{}
 	} else {
-		acc2, b := acc.(*SubKeyAccount)
-		if b{
-			pubKey := acc2.SubKeys[sig.PubKeyIndex - 1]
-			if /*(pubKey == nil) &&*/ pubKey.Revoked {
-				return nil, sdk.ErrInvalidPubKey("PubKey has been revoked.").Result()
-			}
-			return pubKey.PubKey, sdk.Result{}
+		pubKey := acc2.SubKeys[sig.PubKeyIndex - 1]
+		if pubKey == nil && pubKey.Revoked {
+			return nil, sdk.ErrInvalidPubKey("PubKey does not exist or has been revoked.").Result()
 		}
 		return nil, sdk.ErrUnauthorized("Account not of type subkeys").Result()
 	}
