@@ -258,7 +258,7 @@ func consumeSimSigGas(gasmeter sdk.GasMeter, pubkey crypto.PubKey, sig StdSignat
 // has not been set.
 func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey, sdk.Result) {
 	// If pubkey is not known for account, set it from the StdSignature.
-		if sig.PubKeyIndex == 0 {
+	if sig.PubKeyIndex == 0 {
 		pubKey := acc.GetPubKey()
 		if simulate {
 			// In simulate mode the transaction comes with no signatures, thus if the
@@ -283,9 +283,7 @@ func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey,
 					fmt.Sprintf("PubKey does not match Signer address %s", acc.GetAddress())).Result()
 			}
 		}
-	}
-
-	else {
+	} else {
 		pubKey := acc.SubKeys[PubKeyIndex - 1]
 		if pubKey == nil && pubKey.Revoked {
 			return nil, sdk.ErrNotPermitted("PubKey does not exist or has been revoked.").Result()
