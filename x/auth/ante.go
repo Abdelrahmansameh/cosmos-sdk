@@ -121,7 +121,6 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 
 
 		/*TO DO: make a queque for the fees */
-	
 
 		fkey, res := ProcessPubKey(signerAccs[0], stdSigs[0], simulate)
 
@@ -144,12 +143,12 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 				return newCtx, res, true
 			}
 
-			fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
-		}
+                fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
+            }
+        }
 
 		// stdSigs contains the sequence number, account number, and signatures.
 		// When simulating, this would just be a 0-length slice.
-		
 
 
 		for i := 0; i < len(stdSigs); i++ {
@@ -298,14 +297,14 @@ func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey,
 					fmt.Sprintf("PubKey does not match Signer address %s", acc.GetAddress())).Result()
 			}
 		}
+		return pubKey, sdk.Result{}
 	} else {
 		pubKey := acc2.SubKeys[sig.PubKeyIndex - 1]
 		if pubKey == nil && pubKey.Revoked {
 			return nil, sdk.ErrInvalidPubKey("PubKey does not exist or has been revoked.").Result()
 		}
+		return nil, sdk.ErrUnauthorized("Account not of type subkeys").Result()
 	}
-
-	return pubKey, sdk.Result{}
 }
 
 // consumeSigVerificationGas consumes gas for signature verification based upon
@@ -445,3 +444,19 @@ func GetSignBytes(chainID string, stdTx StdTx, acc Account, genesis bool) []byte
 		chainID, accNum, acc.GetSequence(), stdTx.Fee, stdTx.Msgs, stdTx.Memo,
 	)
 }
+
+/*func RemoveOld(ctx sdk.Context) {
+    store := ctx.Store(spentFeeQueueStoreKey) // this queue should hold the transactions
+    tmax  := ctx.BlockTime
+    // pseudo code  TODO
+    /*
+    for fee:=store.Peek();fee!=nil && fee.BlockTime<tmax;fee=store.Peek() {
+        acc := accountKeeper.GetAccount(fee.Address)
+        if fee.SubKeyIndex > 0 {
+            acc.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed -= fee.FeeSpent
+        }
+        store.Delete(fee) or store.Pop()
+    }
+    */
+//}
+

@@ -521,9 +521,9 @@ type SubKeyMetadata struct {
     PubKey              crypto.PubKey  `json:"public_key"`
     PermissionedRoutes  []string       `json:"permission_routes"`
     DailyFeeAllowance   sdk.Coins      `json:"daily_fee_allowance"`
-		DailyFeeUsed        sdk.Coins      `json:"daily_fee_used"`
-		DailyTrsAllowance		sdk.Coins			 `json:"daily_trs_allowance"`
-		DailyTrsUsed				sdk.Coins			 `json:"daily_trs_used"`
+    DailyFeeUsed        sdk.Coins      `json:"daily_fee_used"`
+    // DailyTrsAllowance   sdk.Coins      `json:"daily_trs_allowance"`
+    // DailyTrsUsed        sdk.Coins      `json:"daily_trs_used"`
     Revoked             bool           `json:"revoked"`
 }
 
