@@ -534,3 +534,35 @@ func TestSubKeyAccountSequence(t *testing.T) {
     require.Equal(t, seq, acc.GetSequence())
 }
 
+func TestType(t *testing.T) {
+    _, _, addr1 := keyPubAddr()
+    var acc interface{} = NewSubKeyAccountWithAddress(addr1)
+
+	acc2, acc2b := acc.(SubKeyAccount)
+	_, acc3b := acc.(BaseAccount)
+	
+	require.Equal(t,true,acc2b)
+	require.Equal(t,acc,acc2)
+	require.Equal(t,false,acc3b)
+	//require.Equal(t,acc,acc3)
+}
+
+
+func TestToSubKeyAcc(t *testing.T) {
+	_, _, addr1 := keyPubAddr()
+	acc := NewBaseAccountWithAddress(addr1)
+
+	var iacc interface{} = acc
+
+	_, accb := iacc.(SubKeyAccount)
+
+	require.Equal(t,false,accb)	
+	
+	acc2 := acc.ToSubKeyAcc()
+	
+	var iacc2 interface{} = acc2
+
+	_, accb = iacc2.(SubKeyAccount)
+
+	require.Equal(t,true,accb)
+}

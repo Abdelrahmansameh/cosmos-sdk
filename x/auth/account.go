@@ -38,6 +38,8 @@ type Account interface {
 
 	// Ensure that account implements stringer
 	String() string
+
+	ToSubKeyAcc() SubKeyAccount
 }
 
 // VestingAccount defines an account type that vests coins via a vesting schedule.
@@ -650,6 +652,11 @@ func (acc *SubKeyAccount) SpendableCoins(_ time.Time) sdk.Coins {
 	return acc.GetCoins()
 }
 
+// convert SubKeyAccount to SubKeyAccount
+func (acc *SubKeyAccount) ToSubKeyAcc() SubKeyAccount {
+    return *acc
+}
+
 // convert BaseAccount to SubKeyAccount
 func (acc *BaseAccount) ToSubKeyAcc() SubKeyAccount {
     return SubKeyAccount{
@@ -660,4 +667,3 @@ func (acc *BaseAccount) ToSubKeyAcc() SubKeyAccount {
         Sequence:       acc.Sequence,
     }
 }
-
