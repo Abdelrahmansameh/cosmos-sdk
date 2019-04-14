@@ -335,7 +335,7 @@ func (msg MsgRevokeSubKey) GetSignBytes() []byte{
 func (msg MsgRevokeSubKey) GetSigners() []sdk.AccAddress{
 	return []sdk.AccAddress{msg.Address}
 }
-// StdSignature represents a sig
+
 type StdSignature struct {
 				 crypto.PubKey  `json:"pub_key"`
 	Signature    []byte         `json:"signature"`
