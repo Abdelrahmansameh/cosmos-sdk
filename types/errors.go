@@ -94,6 +94,8 @@ func CodeToDefaultMsg(code CodeType) string {
 		return "no signatures supplied"
 	case CodeMsgRoute:
 		return "message route not permitted under subkey"
+	case CodeFeeLimitReached:
+		return "fee limit for subkey has been reached"
 	default:
 		return unknownCodeMsg(code)
 	}
@@ -157,6 +159,10 @@ func ErrGasOverflow(msg string) Error {
 }
 
 func ErrMsgRoute(msg string) Error {
+	return newErrorWithRootCodespace(CodeMsgRoute, msg)
+}
+
+func ErrCodeFeeLimitReached(msg string) Error {
 	return newErrorWithRootCodespace(CodeMsgRoute, msg)
 }
 //----------------------------------------
