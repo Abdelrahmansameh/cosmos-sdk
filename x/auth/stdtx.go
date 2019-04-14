@@ -295,7 +295,7 @@ func (msg MsgUpdateSubKeyAllowance) GetSignBytes() []byte{
 	if err != nil{
 		panic(err)
 	}
-	return sdk.MustSortJSON(b) 
+	return sdk.MustSortJSON(b)
 }
 
 
@@ -313,11 +313,11 @@ func (msg MsgRevokeSubKey) Route() string {return "auth"}
 func (msg MsgRevokeSubKey) Type() string {return "revoke_sub_key"}
 
 func (msg MsgRevokeSubKey) ValidateBasic() sdk.Error{
-	
+
 	if msg.Address.Empty(){
 		return sdk.ErrInvalidAddress(msg.Address.String())
 	}
-	
+
 	if msg.SubKeyIndex <= 0{
 		return sdk.ErrUnauthorized(" Index can not be negative ")
 	}
@@ -337,7 +337,7 @@ func (msg MsgRevokeSubKey) GetSigners() []sdk.AccAddress{
 }
 
 type StdSignature struct {
-				 crypto.PubKey  `json:"pub_key"`
+	crypto.PubKey               `json:"pub_key"` // optional
 	Signature    []byte         `json:"signature"`
     PubKeyIndex  uint           `json:"pub_key_idx"`
 }
