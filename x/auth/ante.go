@@ -128,7 +128,7 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 			for i := 0; i < len(msgs); i++ {
 				flag = false
 				for j, el := range acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].PermissionedRoutes {
-					if msgs[i].Route == el {
+					if msgs[i].Route() == el {
 						flag = true
 					}
                 }
