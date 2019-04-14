@@ -27,17 +27,19 @@ func init() {
 	copy(simSecp256k1Pubkey[:], bz)
 }
 
-type DailyFeeSpend struct {
+type DailyFeeUsed struct {
     Address      sdk.AccAddress
     SubKeyIndex  uint
     FeeSpent     sdk.Coins
 }
 
-type DailyTrsSpend struct {
+/*
+type DailyTrsUsed struct {
 	Address		 sdk.AccAddress
 	SubKeyIndex	 uint
 	TrsSpent	 sdk.Coins
-}
+}*/
+
 // NewAnteHandler returns an AnteHandler that checks and increments sequence
 // numbers, checks signatures & account numbers, and deducts fees from the first
 // signer.
@@ -121,15 +123,18 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 		/*TO DO: - Check that the fees are OK with regards to the daily allowance for the first signer (the one who pays), add it to the blockchain
 		- Check that each payer can actually pay the transaction */
 
-		fkey, r := ProcessPubKey(signerAccs[0], stdSigs[0], simulate)
+		fkey, res := ProcessPubKey(signerAccs[0], stdSigs[0], simulate)
 
-		if !r.IsOK() {
+		if !res.IsOK() {
 			return newCtx, res, true
 		}
 
 
 		if !stdTx.Fee.Amount.IsZero() {
-			if stdTx.Fee + stdSigs[0] > 
+			if stdTx.Fee + signerAccs[0].SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed > signerAccs[0].SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeAllowed{
+				return newCtx, sdk.ErrNotPermitted("The requested operation would go over the limit for of the Daily Fee Allowance"), true
+			}
+			
 			signerAccs[0], res = DeductFees(ctx.BlockHeader().Time, signerAccs[0], stdTx.Fee)
 			if !res.IsOK() {
 				return newCtx, res, true
