@@ -329,7 +329,7 @@ func (msg MsgRevokeSubKey) GetSignBytes() []byte{
 	if err != nil{
 		panic(err)
 	}
-	return sdk.MustSortJSON(b) 
+	return sdk.MustSortJSON(b)
 }
 
 func (msg MsgRevokeSubKey) GetSigners() []sdk.AccAddress{
