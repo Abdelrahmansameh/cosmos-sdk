@@ -2,9 +2,8 @@ package auth
 
 import (
 	"fmt"
-	"time"
 	"github.com/tendermint/tendermint/crypto"
-
+	"time"
 	codec "github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/params"
@@ -227,13 +226,21 @@ func (ak AccountKeeper) decodeAccount(bz []byte) (acc Account) {
 	return
 }
 
+func (ak AccountKeeper) decodeFee(bz []byte) (fee DailyFeeUsed ){
+	err := ak.cdc.UnmarshalBinaryBare(bz, &fee)
+	if err != nil {
+		panic(err)
+	}
+	return 
+}
+
 func RemoveOld(ctx sdk.Context, accountKeeper AccountKeeper) {
-    store := ctx.kvStore(accountKeeper.key) // this queue should hold the transactions
-	tmin := ctx.BlockTime.addDate(0, 0, -1) 
+    store := ctx.KVStore(accountKeeper.key) // this queue should hold the transactions
+	tmin := time.Now().addDate(0, 0, -1) 
 	it := sdk.KVStorePrefixIterator(store, FeeSpentPrefix) 
 	defer it.Close()
 	for ; it.Valid(); it.Next(){
-		fee  := it.Value()
+		fee  := unmarshall(it.Value())
 		transactionTime := it.Key()
 		acc := accountKeeper.GetAccount(fee.Address)
 		if fee.SubKeyIndex > 0 && tmin > transactionTime {
