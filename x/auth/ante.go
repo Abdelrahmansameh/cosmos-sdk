@@ -33,6 +33,7 @@ type DailyFeeUsed struct {
     FeeSpent     sdk.Coins
 }
 
+
 /*
 type DailyTrsUsed struct {
 	Address		 sdk.AccAddress
@@ -127,7 +128,7 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 			flag := false
 			for i := 0; i < len(msgs); i++ {
 				flag = false
-				for j, el := range acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].PermissionedRoutes {
+				for _, el := range acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].PermissionedRoutes {
 					if msgs[i].Route() == el {
 						flag = true
 					}
@@ -148,8 +149,8 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                     if !res.IsOK() {
                         return newCtx, res, true
                     }
-
-					acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed = acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.Add(stdTx.Fee.Amount)
+					ak.addFee(DailyFeeUsed())
+					acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.FeeUsed = acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.Add(stdTx.Fee.Amount)
 
                     fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
                 }

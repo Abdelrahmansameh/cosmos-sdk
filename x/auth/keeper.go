@@ -123,6 +123,20 @@ func (ak AccountKeeper) SetAccount(ctx sdk.Context, acc Account) {
 	store.Set(AddressStoreKey(addr), bz)
 }
 
+func (ak AccountKeeper) addFee(ctx sdk.Context, fee DailyFeeUsed) {
+	store := ctx.KVStore(ak.key)
+	t := time.Now()
+	k, err1 := t.MarshalBinary()
+	if err1 != nil{
+		panic(err1)
+	}
+	bz, err2 := ak.cdc.MarshalBinaryBare(fee)
+	if err2 != nil{
+		panic(err2)
+	}
+	store.Set(append(FeeSpentPrefix, k...), bz)
+}
+
 // RemoveAccount removes an account for the account mapper store.
 // NOTE: this will cause supply invariant violation if called
 func (ak AccountKeeper) RemoveAccount(ctx sdk.Context, acc Account) {
@@ -226,6 +240,7 @@ func (ak AccountKeeper) decodeAccount(bz []byte) (acc Account) {
 	return
 }
 
+
 func (ak AccountKeeper) decodeFee(bz []byte) (fee DailyFeeUsed ){
 	err := ak.cdc.UnmarshalBinaryBare(bz, &fee)
 	if err != nil {
@@ -236,16 +251,20 @@ func (ak AccountKeeper) decodeFee(bz []byte) (fee DailyFeeUsed ){
 
 func RemoveOld(ctx sdk.Context, accountKeeper AccountKeeper) {
     store := ctx.KVStore(accountKeeper.key) // this queue should hold the transactions
-	tmin := time.Now().addDate(0, 0, -1) 
+	tmin := time.Now().AddDate(0, 0, -1) 
 	it := sdk.KVStorePrefixIterator(store, FeeSpentPrefix) 
 	defer it.Close()
 	for ; it.Valid(); it.Next(){
-		fee  := unmarshall(it.Value())
-		transactionTime := it.Key()
-		acc := accountKeeper.GetAccount(fee.Address)
-		if fee.SubKeyIndex > 0 && tmin > transactionTime {
-			acc.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed -= fee.FeeSpent
-			store.Delete(transactionTime)
+		fee  := accountKeeper.decodeFee((it.Value()))
+		var transactionTime (*time.Time)
+		_ = transactionTime.UnmarshalBinary(it.Key())
+		acc := accountKeeper.GetAccount(ctx, fee.Address)
+		acc2, b := acc.(*SubKeyAccount)
+		if b{
+			if fee.SubKeyIndex > 0 && tmin.After( *transactionTime) {
+				acc2.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed = acc2.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed.Sub(fee.FeeSpent)
+				store.Delete(it.Key())
+			}
 		}
 	}
 }
