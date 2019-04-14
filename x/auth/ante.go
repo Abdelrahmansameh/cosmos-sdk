@@ -149,7 +149,11 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                     if !res.IsOK() {
                         return newCtx, res, true
                     }
-					ak.addFee(DailyFeeSpend())
+					ak.addFee(ctx, DailyFeeSpend{
+						Address: acc0.Address,
+						SubKeyIndex: stdSigs[0].PubKeyIndex,
+						FeeSpent: stdTx.Fee.Amount,
+					})
 					acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed = acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.Add(stdTx.Fee.Amount)
 
                     fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
