@@ -131,7 +131,7 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 					if msgs[i] == el {
 						flag = true
 					}
-				} 
+                }
 				if !flag {
 					return newCtx, sdk.ErrMsgRoute("Message route not permitted for selected subkey.").Result()
 				}
@@ -143,8 +143,8 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                         return newCtx, sdk.ErrInsufficientFunds("The requested operation would go over the limit for of the Daily Fee Allowance").Result(), true
                     }
 
-					acc0, res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
-					
+                    acc0, res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
+
                     if !res.IsOK() {
                         return newCtx, res, true
                     }
