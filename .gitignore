@@ -45,7 +45,3 @@ dependency-graph.png
 *.aux
 *.out
 *.synctex.gz
-
-# Testnet
-build/node*
-build/gentxs
