@@ -727,11 +727,11 @@ func handleMsgRevokeSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgRevokeSubKe
     if msg.SubKeyIndex == 0 {
         return sdk.ErrUnauthorized("Main key cannot be revoked").Result()
     }
-    acc := ak.GetAccount(msg.Address)
-    _,b := acc.(SubKeyAccount)
+    acc := ak.GetAccount(ctx,msg.Address)
+    acc2,b := acc.(SubKeyAccount)
     if b {
-        acc.SubKeys[msg.SubKeyIndex - 1].Revoked = true
-        ak.SetAccount(ctx,acc)
+        acc2.SubKeys[msg.SubKeyIndex - 1].Revoked = true
+        ak.SetAccount(ctx,acc2)
         return sdk.Result{}
     } else {
         return sdk.ErrUnauthorized("Not good account type").Result()
