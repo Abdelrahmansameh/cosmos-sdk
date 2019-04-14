@@ -123,7 +123,7 @@ func (ak AccountKeeper) SetAccount(ctx sdk.Context, acc Account) {
 	store.Set(AddressStoreKey(addr), bz)
 }
 
-func (ak AccountKeeper) addFee(ctx sdk.Context, fee DailyFeeUsed) {
+func (ak AccountKeeper) addFee(ctx sdk.Context, fee DailyFeeSpend) {
 	store := ctx.KVStore(ak.key)
 	t := time.Now()
 	k, err1 := t.MarshalBinary()
@@ -241,7 +241,7 @@ func (ak AccountKeeper) decodeAccount(bz []byte) (acc Account) {
 }
 
 
-func (ak AccountKeeper) decodeFee(bz []byte) (fee DailyFeeUsed ){
+func (ak AccountKeeper) decodeFee(bz []byte) (fee DailyFeeSpend ){
 	err := ak.cdc.UnmarshalBinaryBare(bz, &fee)
 	if err != nil {
 		panic(err)
