@@ -557,7 +557,7 @@ type SubKeyAccount struct {
 }
 
 // String implements fmt.Stringer
-func (acc SubKeyAccount) String() string {
+func (acc* SubKeyAccount) String() string {
 	var pubkey string
 
 	if acc.PubKey != nil {
@@ -589,7 +589,7 @@ func NewSubKeyAccountWithAddress(addr sdk.AccAddress) SubKeyAccount {
 }
 
 // GetAddress - Implements sdk.Account.
-func (acc SubKeyAccount) GetAddress() sdk.AccAddress {
+func (acc* SubKeyAccount) GetAddress() sdk.AccAddress {
 	return acc.Address
 }
 
@@ -603,7 +603,7 @@ func (acc *SubKeyAccount) SetAddress(addr sdk.AccAddress) error {
 }
 
 // GetPubKey - Implements sdk.Account.
-func (acc SubKeyAccount) GetPubKey() crypto.PubKey {
+func (acc* SubKeyAccount) GetPubKey() crypto.PubKey {
 	return acc.PubKey
 }
 
@@ -688,7 +688,7 @@ func NewHandler(ak AccountKeeper) sdk.Handler {
 // Handle a message to set name
 func handleMsgAddSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
     acc := ak.GetAccount(ctx,msg.Address)
-    acc2,b := acc.(SubKeyAccount)
+    acc2,b := acc.(*SubKeyAccount)
     if b {
         acc2.SubKeys = append(acc2.SubKeys, SubKeyMetadata{
             PubKey:              msg.PubKey,
@@ -711,7 +711,7 @@ func handleMsgUpdateSubKeyAllowance(ctx sdk.Context, ak AccountKeeper, msg MsgUp
         return sdk.ErrUnauthorized("Main key allowance cannot be updated").Result()
     }
     acc := ak.GetAccount(ctx,msg.Address)
-    acc2,b := acc.(SubKeyAccount)
+		acc2,b := acc.(*SubKeyAccount)
     if b {
         acc2.SubKeys[msg.SubKeyIndex - 1].DailyFeeAllowance = msg.DailyFeeAllowance
         ak.SetAccount(ctx,acc2)
@@ -728,7 +728,7 @@ func handleMsgRevokeSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgRevokeSubKe
         return sdk.ErrUnauthorized("Main key cannot be revoked").Result()
     }
     acc := ak.GetAccount(ctx,msg.Address)
-    acc2,b := acc.(SubKeyAccount)
+    acc2,b := acc.(*SubKeyAccount)
     if b {
         acc2.SubKeys[msg.SubKeyIndex - 1].Revoked = true
         ak.SetAccount(ctx,acc2)
