@@ -270,7 +270,7 @@ func (msg MsgAddSubKey) GetSigners() []sdk.AccAddress{
 }
 
 type MsgUpdateSubKeyAllowance struct {
-	Address sdk.accAddress
+	Address sdk.AccAddress
 	SubKeyIndex uint
 	DailyFeeAllowance sdk.Coins
 }
