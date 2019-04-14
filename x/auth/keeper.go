@@ -268,13 +268,3 @@ func RemoveOld(ctx sdk.Context, accountKeeper AccountKeeper) {
 		}
 	}
 }
-    // pseudo code  TODO
-    /*
-    for fee:=store.Peek();fee!=nil && fee.BlockTime<tmax;fee=store.Peek() {
-        acc := accountKeeper.GetAccount(fee.Address)
-        if fee.SubKeyIndex > 0 {
-            acc.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed -= fee.FeeSpent
-        }
-        store.Delete(fee) or store.Pop()
-    }
-}*/
