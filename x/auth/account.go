@@ -680,16 +680,21 @@ func NewHandler(ak AccountKeeper) sdk.Handler {
 
 // Handle a message to set name
 func handleMsgAddSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
-    acc := accountKeeper.GetAccount(msg.Address)
-    acc.SubKeys := append(acc.SubKeys, SubKeyMetadata{
-        PubKey               msg.PubKey
-        PermissionedRoutes   msg.PermissionedRoutes
-        DailyFeeAllowance    msg.DailyFeeAllowance
-        DailyFeeUsed         sdk.Coins{}
-        Revoked              false
-    })
-    accountKeeper.SetAccount(acc)
+    acc := ak.GetAccount(ctx,msg.Address)
+    _,b := acc.(SubKeyAccount)
+    if b {
+        acc.SubKeys = append(acc.SubKeys, SubKeyMetadata{
+            PubKey:              msg.PubKey,
+            PermissionedRoutes:  msg.PermissionedRoutes,
+            DailyFeeAllowance:   msg.DailyFeeAllowance,
+            DailyFeeUsed:        sdk.Coins{},
+            Revoked:             false,
+        })
+        ak.SetAccount(ctx,acc)
 	return sdk.Result{}
+    } else {
+        return sdk.ErrUnauthorized("Not good account type").Result()
+    }
 }
 
 // Handle a message to set name
@@ -697,10 +702,15 @@ func handleMsgUpdateSubKeyAllowance(ctx sdk.Context, ak AccountKeeper, msg MsgAd
     if SubKeyIndex == 0 {
         return sdk.ErrUnauthorized("Main key allowance cannot be updated").Result()
     }
-    acc := accountKeeper.GetAccount(msg.Address)
-    acc.SubKeys[msg.SubKeyIndex - 1].DailyFeeAllowance = msg.DailyFeeAllowance
-    accountKeeper.SetAccount(acc)
-	return sdk.Result{}
+    acc := ak.GetAccount(ctx,msg.Address)
+    _,b := acc.(SubKeyAccount)
+    if b {
+        acc.SubKeys[msg.SubKeyIndex - 1].DailyFeeAllowance = msg.DailyFeeAllowance
+        ak.SetAccount(ctx,acc)
+        return sdk.Result{}
+    } else {
+        return sdk.ErrUnauthorized("Not good account type").Result()
+    }
 }
 
 // Handle a message to set name
@@ -708,8 +718,13 @@ func handleMsgRevokeSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) 
     if SubKeyIndex == 0 {
         return sdk.ErrUnauthorized("Main key cannot be revoked").Result()
     }
-    acc := accountKeeper.GetAccount(msg.Address)
-    acc.SubKeys[msg.SubKeyIndex - 1].Revoked = true
-    accountKeeper.SetAccount(acc)
-	return sdk.Result{}
+    acc := ak.GetAccount(msg.Address)
+    _,b := acc.(SubKeyAccount)
+    if b {
+        acc.SubKeys[msg.SubKeyIndex - 1].Revoked = true
+        ak.SetAccount(ctx,acc)
+        return sdk.Result{}
+    } else {
+        return sdk.ErrUnauthorized("Not good account type").Result()
+    }
 }
