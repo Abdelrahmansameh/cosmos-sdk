@@ -121,7 +121,6 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 
 
 		/*TO DO: make a queque for the fees */
-	
 
 		fkey, res := ProcessPubKey(signerAccs[0], stdSigs[0], simulate)
 
@@ -129,23 +128,24 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 			return newCtx, res, true
 		}
 
+        acc0,b := signerAccs[0].(*SubKeyAccount)
+        if b {
+            if !stdTx.Fee.Amount.IsZero() {
+                if stdTx.Fee.Amount + acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed > acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeAllowance {
+                    return newCtx, sdk.ErrInsufficientFunds("The requested operation would go over the limit for of the Daily Fee Allowance").Result(), true
+                }
 
-		if !stdTx.Fee.Amount.IsZero() {
-			if stdTx.Fee + signerAccs[0].SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed > signerAccs[0].SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeAllowed{
-				return newCtx, sdk.ErrInsufficientFunds("The requested operation would go over the limit for of the Daily Fee Allowance").Result(), true
-			}
+                _, res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
+                if !res.IsOK() {
+                    return newCtx, res, true
+                }
 
-			signerAccs[0], res = DeductFees(ctx.BlockHeader().Time, signerAccs[0], stdTx.Fee)
-			if !res.IsOK() {
-				return newCtx, res, true
-			}
-
-			fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
-		}
+                fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
+            }
+        }
 
 		// stdSigs contains the sequence number, account number, and signatures.
 		// When simulating, this would just be a 0-length slice.
-		
 
 
 		for i := 0; i < len(stdSigs); i++ {
