@@ -162,7 +162,7 @@ func ErrMsgRoute(msg string) Error {
 	return newErrorWithRootCodespace(CodeMsgRoute, msg)
 }
 
-func ErrCodeFeeLimitReached(msg string) Error {
+func ErrFeeLimitReached(msg string) Error {
 	return newErrorWithRootCodespace(CodeMsgRoute, msg)
 }
 //----------------------------------------
