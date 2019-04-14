@@ -122,22 +122,54 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                 return newCtx, res, true
             }
 
-            acc0,b := signerAccs[0].(*SubKeyAccount)
+			acc0,b := signerAccs[0].(*SubKeyAccount)
+			msgs := stdTx.Msgs
+			flag := false
+			for i := 0; i < len(msgs); i++ {
+				flag = false
+				for j, el := range acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].PermissionedRoutes {
+					if msgs[i].Route() == el {
+						flag = true
+					}
+                }
+				if !flag {
+					return newCtx, sdk.ErrMsgRoute("Message route not permitted for selected subkey.").Result(), true
+				}
+			}
+
             if b {
                 if !stdTx.Fee.Amount.IsZero() {
                     if stdTx.Fee.Amount.Add(acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed).IsAllGTE(acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeAllowance) {
-                        return newCtx, sdk.ErrInsufficientFunds("The requested operation would go over the limit for of the Daily Fee Allowance").Result(), true
+                        return newCtx, sdk.ErrFeeLimitReached("The requested operation would go over the limit for of the Daily Fee Allowance").Result(), true
                     }
 
-                    _, res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
+					_, res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
+					
                     if !res.IsOK() {
                         return newCtx, res, true
                     }
 
+					acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed = acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.Add(stdTx.Fee.Amount)
+
                     fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
                 }
-            }
+            } else {
+				if !stdTx.Fee.Amount.IsZero() {
+                    /*if stdTx.Fee.Amount.Add(acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed).IsAllGTE(acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeAllowance) {
+                        return newCtx, sdk.ErrInsufficientFunds("The requested operation would go over the limit for of the Daily Fee Allowance").Result(), true
+                    }
+*/
+                    _ , res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
+                    if !res.IsOK() {
+                        return newCtx, res, true
+                    }
 
+        
+
+                    fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
+                }
+
+			}
             // stdSigs contains the sequence number, account number, and signatures.
             // When simulating, this would just be a 0-length slice.
 
@@ -259,11 +291,6 @@ func consumeSimSigGas(gasmeter sdk.GasMeter, pubkey crypto.PubKey, sig StdSignat
 // has not been set.
 func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey, sdk.Result) {
 	// If pubkey is not known for account, set it from the StdSignature.
-	acc2,b := acc.(*SubKeyAccount)
-
-	if !b {
-			return newCtx, sdk.ErrUnauthorized("Wrong account type, upgrade to latest release."), true
-	}
 	if sig.PubKeyIndex == 0 {
 		pubKey := acc.GetPubKey()
 		if simulate {
@@ -291,9 +318,14 @@ func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey,
 		}
 		return pubKey, sdk.Result{}
 	} else {
+        acc2,b := acc.(*SubKeyAccount)
+
+        if !b {
+            return simSecp256k1Pubkey, sdk.ErrUnauthorized("Wrong account type, upgrade to latest release.").Result()
+        }
 		pubKey := acc2.SubKeys[sig.PubKeyIndex - 1]
-		if pubKey == nil && pubKey.Revoked {
-			return nil, sdk.ErrInvalidPubKey("PubKey does not exist or has been revoked.").Result()
+		if pubKey.Revoked {
+			return simSecp256k1Pubkey, sdk.ErrInvalidPubKey("PubKey does not exist or has been revoked.").Result()
 		}
 		return nil, sdk.ErrUnauthorized("Account not of type subkeys").Result()
 	}
