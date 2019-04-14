@@ -11,9 +11,13 @@ def print_help():
     print("""
     Disclaimer: This script is meant for the hackathon to install/interact with gaia, it is not meant for production.\n
     Usage:
-    - install everything        Install everything. (Normally just run this once if this is the first time)
+    - compile_stuff
+    - install everything        Install multi-node network. (Normally just run this once if this is the first time)
     - testnet start/init        Start testnet from the beginning (height = 1)
     """)
+
+def compile_stuff():
+    execute("make tools install")
 
 def install_everything():
     print("* Step 1: Install gaiad and gaiacli")
@@ -28,7 +32,7 @@ def install_everything():
     execute("make build-linux")
     execute("make build-docker-gaiadnode")
 
-    print("\n\nInstallation finished (Assume no errors). Run 'testnet' to start.")
+    print("\n\nInstallation finished (Assume no errors). Run 'testnet start' to start.")
 
 def testnet_start():
     execute("[ -d build/gentxs ] && sudo rm -rf build/")
@@ -45,8 +49,12 @@ def main():
         elif line in ["q", "quit", "exit", "bye"]:
             print("Bye!")
             break
-        elif line == "install everything": install_everything()
-        elif line in ["testnet start", "testnet init"]: testnet_start()
+        elif line == "compile":
+            compile_stuff()
+        elif line == "install everything":
+            install_everything()
+        elif line in ["testnet start", "testnet init"]:
+            testnet_start()
         else:
             print("Invalid command")
 
