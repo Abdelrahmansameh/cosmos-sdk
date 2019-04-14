@@ -283,14 +283,15 @@ func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey,
 					fmt.Sprintf("PubKey does not match Signer address %s", acc.GetAddress())).Result()
 			}
 		}
+		return pubKey, sdk.Result{}
 	} else {
 		pubKey := acc.SubKeys[PubKeyIndex - 1]
 		if pubKey == nil && pubKey.Revoked {
-			return nil, sdk.ErrNotPermitted("PubKey does not exist or has been revoked.").Result()
+			return nil, sdk.ErrInvalidPubKey("PubKey does not exist or has been revoked.").Result()
 		}
+		return pubKey, sdk.Result{}
 	}
 
-	return pubKey, sdk.Result{}
 }
 
 // consumeSigVerificationGas consumes gas for signature verification based upon
