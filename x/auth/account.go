@@ -688,16 +688,16 @@ func NewHandler(ak AccountKeeper) sdk.Handler {
 // Handle a message to set name
 func handleMsgAddSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
     acc := ak.GetAccount(ctx,msg.Address)
-    _,b := acc.(SubKeyAccount)
+    acc2,b := acc.(SubKeyAccount)
     if b {
-        acc.SubKeys = append(acc.SubKeys, SubKeyMetadata{
+        acc2.SubKeys = append(acc2.SubKeys, SubKeyMetadata{
             PubKey:              msg.PubKey,
             PermissionedRoutes:  msg.PermissionedRoutes,
             DailyFeeAllowance:   msg.DailyFeeAllowance,
             DailyFeeUsed:        sdk.Coins{},
             Revoked:             false,
         })
-        ak.SetAccount(ctx,acc)
+        ak.SetAccount(ctx,acc2)
 	return sdk.Result{}
     } else {
         return sdk.ErrUnauthorized("Not good account type").Result()
