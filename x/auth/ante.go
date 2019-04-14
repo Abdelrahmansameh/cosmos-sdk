@@ -285,13 +285,16 @@ func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey,
 		}
 		return pubKey, sdk.Result{}
 	} else {
-		pubKey := acc.SubKeys[PubKeyIndex - 1]
-		if pubKey == nil && pubKey.Revoked {
-			return nil, sdk.ErrInvalidPubKey("PubKey does not exist or has been revoked.").Result()
+		acc2, b := acc.(*SubKeyAccount)
+		if b{
+			pubKey := acc2.SubKeys[sig.PubKeyIndex - 1]
+			if /*(pubKey == nil) &&*/ pubKey.Revoked {
+				return nil, sdk.ErrInvalidPubKey("PubKey has been revoked.").Result()
+			}
+			return pubKey.PubKey, sdk.Result{}
 		}
-		return pubKey, sdk.Result{}
+		return nil, sdk.ErrUnauthorized("Account not of type subkeys").Result()
 	}
-
 }
 
 // consumeSigVerificationGas consumes gas for signature verification based upon
@@ -432,7 +435,7 @@ func GetSignBytes(chainID string, stdTx StdTx, acc Account, genesis bool) []byte
 	)
 }
 
-func RemoveOld(ctx sdk.Context) {
+/*func RemoveOld(ctx sdk.Context) {
     store := ctx.Store(spentFeeQueueStoreKey) // this queue should hold the transactions
     tmax  := ctx.BlockTime
     // pseudo code  TODO
@@ -445,5 +448,5 @@ func RemoveOld(ctx sdk.Context) {
         store.Delete(fee) or store.Pop()
     }
     */
-}
+//}
 
