@@ -27,7 +27,7 @@ func init() {
 	copy(simSecp256k1Pubkey[:], bz)
 }
 
-type DailyFeeUsed struct {
+type DailyFeeSpend struct {
     Address      sdk.AccAddress
     SubKeyIndex  uint
     FeeSpent     sdk.Coins
@@ -145,12 +145,12 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                     }
 
 					_, res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
-					
+
                     if !res.IsOK() {
                         return newCtx, res, true
                     }
-					ak.addFee(DailyFeeUsed())
-					acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.FeeUsed = acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.Add(stdTx.Fee.Amount)
+					ak.addFee(DailyFeeSpend())
+					acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed = acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.Add(stdTx.Fee.Amount)
 
                     fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
                 }
@@ -165,7 +165,7 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                         return newCtx, res, true
                     }
 
-        
+
 
                     fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
                 }
