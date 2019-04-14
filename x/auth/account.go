@@ -555,7 +555,7 @@ type SubKeyAccount struct {
 	PubKey         crypto.PubKey     `json:"public_key"`
 	AccountNumber  uint64            `json:"account_number"`
 	Sequence       uint64            `json:"sequence"`
-  SubKeys        []SubKeyMetadata  `json:"subkeys"`
+    SubKeys        []SubKeyMetadata  `json:"subkeys"`
 }
 
 // String implements fmt.Stringer
