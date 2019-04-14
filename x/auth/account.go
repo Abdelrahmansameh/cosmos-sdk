@@ -688,16 +688,16 @@ func NewHandler(ak AccountKeeper) sdk.Handler {
 // Handle a message to set name
 func handleMsgAddSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
     acc := ak.GetAccount(ctx,msg.Address)
-    _,b := acc.(SubKeyAccount)
+    acc2,b := acc.(SubKeyAccount)
     if b {
-        acc.SubKeys = append(acc.SubKeys, SubKeyMetadata{
+        acc2.SubKeys = append(acc2.SubKeys, SubKeyMetadata{
             PubKey:              msg.PubKey,
             PermissionedRoutes:  msg.PermissionedRoutes,
             DailyFeeAllowance:   msg.DailyFeeAllowance,
             DailyFeeUsed:        sdk.Coins{},
             Revoked:             false,
         })
-        ak.SetAccount(ctx,acc)
+        ak.SetAccount(ctx,acc2)
 	return sdk.Result{}
     } else {
         return sdk.ErrUnauthorized("Not good account type").Result()
@@ -706,8 +706,8 @@ func handleMsgAddSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk
 }
 
 // Handle a message to set name
-func handleMsgUpdateSubKeyAllowance(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
-    if SubKeyIndex == 0 {
+func handleMsgUpdateSubKeyAllowance(ctx sdk.Context, ak AccountKeeper, msg MsgUpdateSubKeyAllowance) sdk.Result {
+    if msg.SubKeyIndex == 0 {
         return sdk.ErrUnauthorized("Main key allowance cannot be updated").Result()
     }
     acc := ak.GetAccount(ctx,msg.Address)
@@ -723,8 +723,8 @@ func handleMsgUpdateSubKeyAllowance(ctx sdk.Context, ak AccountKeeper, msg MsgAd
 }
 
 // Handle a message to set name
-func handleMsgRevokeSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
-    if SubKeyIndex == 0 {
+func handleMsgRevokeSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgRevokeSubKey) sdk.Result {
+    if msg.SubKeyIndex == 0 {
         return sdk.ErrUnauthorized("Main key cannot be revoked").Result()
     }
     acc := ak.GetAccount(msg.Address)
