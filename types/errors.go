@@ -45,6 +45,7 @@ const (
 	CodeGasOverflow       CodeType = 16
 	CodeNoSignatures      CodeType = 17
 	CodeMsgRoute		  CodeType = 18
+	CodeFeeLimitReached	  CodeType = 19
 
 	// CodespaceRoot is a codespace for error codes in this file only.
 	// Notice that 0 is an "unset" codespace, which can be overridden with
@@ -162,7 +163,7 @@ func ErrMsgRoute(msg string) Error {
 	return newErrorWithRootCodespace(CodeMsgRoute, msg)
 }
 
-func ErrCodeFeeLimitReached(msg string) Error {
+func ErrFeeLimitReached(msg string) Error {
 	return newErrorWithRootCodespace(CodeMsgRoute, msg)
 }
 //----------------------------------------
