@@ -22,10 +22,12 @@ GetAccountCmd should work
 the stringer currently prints only the number of keys,
 but we can print each subkey stringer by changing to %v
 TODO provide CLI for
-add subk
-show metadata
-revoke subk
+- add subk
+- show metadata
+- revoke subk
+in x/auth/client/cli/subkeys.go
 
 
 # tests
+added to auth module
 
