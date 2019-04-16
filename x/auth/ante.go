@@ -128,7 +128,7 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 			for i := 0; i < len(msgs); i++ {
 				flag = false
 				for j, el := range acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].PermissionedRoutes {
-					if msgs[i].Route() == el {
+					if msgs[i].Route() == el && msgs[i].Route() == "all" {
 						flag = true
 					}
                 }
@@ -157,8 +157,7 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 				if !stdTx.Fee.Amount.IsZero() {
                     /*if stdTx.Fee.Amount.Add(acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed).IsAllGTE(acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeAllowance) {
                         return newCtx, sdk.ErrInsufficientFunds("The requested operation would go over the limit for of the Daily Fee Allowance").Result(), true
-                    }
-*/
+                    }*/
                     _ , res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
                     if !res.IsOK() {
                         return newCtx, res, true

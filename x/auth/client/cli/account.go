@@ -40,3 +40,5 @@ func GetAccountCmd(storeName string, cdc *codec.Codec) *cobra.Command {
 	}
 	return client.GetCommands(cmd)[0]
 }
+
+func RevokeSubKey()
