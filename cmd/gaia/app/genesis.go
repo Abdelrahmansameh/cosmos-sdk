@@ -90,12 +90,14 @@ type GenesisAccount struct {
 	EndTime          int64     `json:"end_time"`          // vesting end time (UNIX Epoch time)
 }
 
-func NewGenesisAccount(acc *auth.BaseAccount) GenesisAccount {
+func NewGenesisAccount(acc *auth.SubKeyAccount) GenesisAccount {
 	return GenesisAccount{
 		Address:       acc.Address,
 		Coins:         acc.Coins,
 		AccountNumber: acc.AccountNumber,
 		Sequence:      acc.Sequence,
+        PubKey:        acc.PubKey,
+        SubKeys:       acc.SubKeys
 	}
 }
 
@@ -119,13 +121,15 @@ func NewGenesisAccountI(acc auth.Account) GenesisAccount {
 	return gacc
 }
 
-// convert GenesisAccount to auth.BaseAccount
+// convert GenesisAccount to auth.Sub
 func (ga *GenesisAccount) ToAccount() auth.Account {
-	bacc := &auth.BaseAccount{
+	bacc := &auth.SubKeyAccount{
 		Address:       ga.Address,
 		Coins:         ga.Coins.Sort(),
 		AccountNumber: ga.AccountNumber,
 		Sequence:      ga.Sequence,
+        PubKey:        ga.PubKey,
+        SubKeys:       ga.SubKeys,
 	}
 
 	if !ga.OriginalVesting.IsZero() {
@@ -404,7 +408,7 @@ func CollectStdTxs(cdc *codec.Codec, moniker string, genTxsDir string, genDoc tm
 }
 
 func NewDefaultGenesisAccount(addr sdk.AccAddress) GenesisAccount {
-	accAuth := auth.NewBaseAccountWithAddress(addr)
+	accAuth := auth.NewSubKeyAccountWithAddress(addr)
 	coins := sdk.Coins{
 		sdk.NewCoin("footoken", sdk.NewInt(1000)),
 		sdk.NewCoin(defaultBondDenom, freeTokensPerAcc),

@@ -27,18 +27,12 @@ func init() {
 	copy(simSecp256k1Pubkey[:], bz)
 }
 
-type DailyFeeUsed struct {
+type DailyFeeSpend struct {
     Address      sdk.AccAddress
     SubKeyIndex  uint
     FeeSpent     sdk.Coins
 }
 
-/*
-type DailyTrsUsed struct {
-	Address		 sdk.AccAddress
-	SubKeyIndex	 uint
-	TrsSpent	 sdk.Coins
-}*/
 
 // NewAnteHandler returns an AnteHandler that checks and increments sequence
 // numbers, checks signatures & account numbers, and deducts fees from the first
@@ -124,31 +118,35 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
 
 			acc0,b := signerAccs[0].(*SubKeyAccount)
 			msgs := stdTx.Msgs
-			flag := false
-			for i := 0; i < len(msgs); i++ {
-				flag = false
-				for j, el := range acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].PermissionedRoutes {
-					if msgs[i].Route() == el && msgs[i].Route() == "all" {
-						flag = true
-					}
-                }
-				if !flag {
-					return newCtx, sdk.ErrMsgRoute("Message route not permitted for selected subkey.").Result(), true
-				}
-			}
-
             if b {
+                flag := false
+                for i := 0; i < len(msgs); i++ {
+                    flag = false
+                    for _, el := range acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].PermissionedRoutes {
+                        if msgs[i].Route() == el {
+                            flag = true
+                        }
+                    }
+                    if !flag {
+                        return newCtx, sdk.ErrMsgRoute("Message route not permitted for selected subkey.").Result(), true
+                    }
+                }
+
                 if !stdTx.Fee.Amount.IsZero() {
                     if stdTx.Fee.Amount.Add(acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed).IsAllGTE(acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeAllowance) {
                         return newCtx, sdk.ErrFeeLimitReached("The requested operation would go over the limit for of the Daily Fee Allowance").Result(), true
                     }
 
 					_, res = DeductFees(ctx.BlockHeader().Time, acc0, stdTx.Fee)
-					
+
                     if !res.IsOK() {
                         return newCtx, res, true
                     }
-
+					ak.addFee(ctx, DailyFeeSpend{
+						Address: acc0.Address,
+						SubKeyIndex: stdSigs[0].PubKeyIndex,
+						FeeSpent: stdTx.Fee.Amount,
+					})
 					acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed = acc0.SubKeys[stdSigs[0].PubKeyIndex - 1].DailyFeeUsed.Add(stdTx.Fee.Amount)
 
                     fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
@@ -163,7 +161,7 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                         return newCtx, res, true
                     }
 
-        
+
 
                     fck.AddCollectedFees(newCtx, stdTx.Fee.Amount)
                 }

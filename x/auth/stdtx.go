@@ -275,6 +275,15 @@ type MsgUpdateSubKeyAllowance struct {
 	DailyFeeAllowance sdk.Coins
 }
 
+
+func NewMsgUpdateSubKeyAllowance(address sdk.AccAddress, subKeyIndex uint,  dailyFeeAllowance sdk.Coins) MsgUpdateSubKeyAllowance {
+	return MsgUpdateSubKeyAllowance{
+			Address: address,
+			SubKeyIndex : subKeyIndex,
+			DailyFeeAllowance : dailyFeeAllowance, 
+	}
+}
+
 func (msg MsgUpdateSubKeyAllowance) Route() string {return "auth"}
 
 func (msg MsgUpdateSubKeyAllowance) Type() string {return "update_subkey_allowance"}
@@ -306,6 +315,13 @@ func (msg MsgUpdateSubKeyAllowance) GetSigners() []sdk.AccAddress{
 type MsgRevokeSubKey struct{
 	Address sdk.AccAddress
 	SubKeyIndex uint
+}
+
+func NewMsgRevokeSubKey(address sdk.AccAddress, subKeyIndex uint) MsgRevokeSubKey {
+	return MsgRevokeSubKey{
+			Address: address,
+			SubKeyIndex : subKeyIndex,
+	}
 }
 
 func (msg MsgRevokeSubKey) Route() string {return "auth"}

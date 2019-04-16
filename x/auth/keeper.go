@@ -2,9 +2,8 @@ package auth
 
 import (
 	"fmt"
-	"time"
 	"github.com/tendermint/tendermint/crypto"
-
+	"time"
 	codec "github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/params"
@@ -124,6 +123,20 @@ func (ak AccountKeeper) SetAccount(ctx sdk.Context, acc Account) {
 	store.Set(AddressStoreKey(addr), bz)
 }
 
+func (ak AccountKeeper) addFee(ctx sdk.Context, fee DailyFeeSpend) {
+	store := ctx.KVStore(ak.key)
+	t := time.Now()
+	k, err1 := t.MarshalBinary()
+	if err1 != nil{
+		panic(err1)
+	}
+	bz, err2 := ak.cdc.MarshalBinaryBare(fee)
+	if err2 != nil{
+		panic(err2)
+	}
+	store.Set(append(FeeSpentPrefix, k...), bz)
+}
+
 // RemoveAccount removes an account for the account mapper store.
 // NOTE: this will cause supply invariant violation if called
 func (ak AccountKeeper) RemoveAccount(ctx sdk.Context, acc Account) {
@@ -227,28 +240,31 @@ func (ak AccountKeeper) decodeAccount(bz []byte) (acc Account) {
 	return
 }
 
+
+func (ak AccountKeeper) decodeFee(bz []byte) (fee DailyFeeSpend ){
+	err := ak.cdc.UnmarshalBinaryBare(bz, &fee)
+	if err != nil {
+		panic(err)
+	}
+	return 
+}
+
 func RemoveOld(ctx sdk.Context, accountKeeper AccountKeeper) {
-    store := ctx.kvStore(accountKeeper.key) // this queue should hold the transactions
-	tmin := ctx.BlockTime.addDate(0, 0, -1) 
+    store := ctx.KVStore(accountKeeper.key) // this queue should hold the transactions
+	tmin := time.Now().AddDate(0, 0, -1) 
 	it := sdk.KVStorePrefixIterator(store, FeeSpentPrefix) 
 	defer it.Close()
 	for ; it.Valid(); it.Next(){
-		fee  := it.Value()
-		transactionTime := it.Key()
-		acc := accountKeeper.GetAccount(fee.Address)
-		if fee.SubKeyIndex > 0 && tmin > transactionTime {
-			acc.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed -= fee.FeeSpent
-			store.Delete(transactionTime)
+		fee  := accountKeeper.decodeFee((it.Value()))
+		var transactionTime (*time.Time)
+		_ = transactionTime.UnmarshalBinary(it.Key())
+		acc := accountKeeper.GetAccount(ctx, fee.Address)
+		acc2, b := acc.(*SubKeyAccount)
+		if b{
+			if fee.SubKeyIndex > 0 && tmin.After( *transactionTime) {
+				acc2.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed = acc2.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed.Sub(fee.FeeSpent)
+				store.Delete(it.Key())
+			}
 		}
 	}
 }
-    // pseudo code  TODO
-    /*
-    for fee:=store.Peek();fee!=nil && fee.BlockTime<tmax;fee=store.Peek() {
-        acc := accountKeeper.GetAccount(fee.Address)
-        if fee.SubKeyIndex > 0 {
-            acc.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed -= fee.FeeSpent
-        }
-        store.Delete(fee) or store.Pop()
-    }
-}*/
