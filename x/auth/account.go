@@ -69,6 +69,7 @@ type AccountDecoder func(accountBytes []byte) (Account, error)
 
 var _ Account = (*BaseAccount)(nil)
 
+
 // BaseAccount - a base account structure.
 // This can be extended by embedding within in your AppAccount.
 // However one doesn't have to use BaseAccount as long as your struct
@@ -79,7 +80,9 @@ type BaseAccount struct {
 	PubKey        crypto.PubKey  `json:"public_key"`
 	AccountNumber uint64         `json:"account_number"`
 	Sequence      uint64         `json:"sequence"`
+	SubKeys        []SubKeyMetadata  `json:"subkeys"`
 }
+
 
 // String implements fmt.Stringer
 func (acc BaseAccount) String() string {
@@ -91,11 +94,13 @@ func (acc BaseAccount) String() string {
 
 	return fmt.Sprintf(`Account:
   Address:       %s
-  Pubkey:        %s
+  PubKey:        %s
   Coins:         %s
   AccountNumber: %d
-  Sequence:      %d`,
-		acc.Address, pubkey, acc.Coins, acc.AccountNumber, acc.Sequence,
+  Sequence:      %d
+  SubKeys:       %d`,
+		acc.Address, pubkey, acc.Coins,
+        acc.AccountNumber, acc.Sequence, len(acc.SubKeys),
 	)
 }
 
@@ -544,130 +549,6 @@ func (sk SubKeyMetadata) String() string {
 	)
 }
 
-var _ Account = (*SubKeyAccount)(nil)
-
-// SubKeyAccount - an account structure that handles subkeys
-type SubKeyAccount struct {
-	Address        sdk.AccAddress    `json:"address"`
-	Coins          sdk.Coins         `json:"coins"`
-	PubKey         crypto.PubKey     `json:"public_key"`
-	AccountNumber  uint64            `json:"account_number"`
-	Sequence       uint64            `json:"sequence"`
-    SubKeys        []SubKeyMetadata  `json:"subkeys"`
-}
-
-// String implements fmt.Stringer
-func (acc* SubKeyAccount) String() string {
-	var pubkey string
-
-	if acc.PubKey != nil {
-		pubkey = sdk.MustBech32ifyAccPub(acc.PubKey)
-	}
-
-	return fmt.Sprintf(`Account:
-  Address:       %s
-  PubKey:        %s
-  Coins:         %s
-  AccountNumber: %d
-  Sequence:      %d
-  SubKeys:       %d`,
-		acc.Address, pubkey, acc.Coins,
-        acc.AccountNumber, acc.Sequence, len(acc.SubKeys),
-	)
-}
-
-// ProtoSubKeyAccount - a prototype function for SubKeyAccount
-func ProtoSubKeyAccount() Account {
-	return &SubKeyAccount{}
-}
-
-// NewSubKeyAccountWithAddress - returns a new base account with a given address
-func NewSubKeyAccountWithAddress(addr sdk.AccAddress) SubKeyAccount {
-	return SubKeyAccount{
-		Address: addr,
-	}
-}
-
-// GetAddress - Implements sdk.Account.
-func (acc* SubKeyAccount) GetAddress() sdk.AccAddress {
-	return acc.Address
-}
-
-// SetAddress - Implements sdk.Account.
-func (acc *SubKeyAccount) SetAddress(addr sdk.AccAddress) error {
-	if len(acc.Address) != 0 {
-		return errors.New("cannot override SubKeyAccount address")
-	}
-	acc.Address = addr
-	return nil
-}
-
-// GetPubKey - Implements sdk.Account.
-func (acc* SubKeyAccount) GetPubKey() crypto.PubKey {
-	return acc.PubKey
-}
-
-// SetPubKey - Implements sdk.Account.
-func (acc *SubKeyAccount) SetPubKey(pubKey crypto.PubKey) error {
-	acc.PubKey = pubKey
-	return nil
-}
-
-// GetCoins - Implements sdk.Account.
-func (acc *SubKeyAccount) GetCoins() sdk.Coins {
-	return acc.Coins
-}
-
-// SetCoins - Implements sdk.Account.
-func (acc *SubKeyAccount) SetCoins(coins sdk.Coins) error {
-	acc.Coins = coins
-	return nil
-}
-
-// GetAccountNumber - Implements Account
-func (acc *SubKeyAccount) GetAccountNumber() uint64 {
-	return acc.AccountNumber
-}
-
-// SetAccountNumber - Implements Account
-func (acc *SubKeyAccount) SetAccountNumber(accNumber uint64) error {
-	acc.AccountNumber = accNumber
-	return nil
-}
-
-// GetSequence - Implements sdk.Account.
-func (acc *SubKeyAccount) GetSequence() uint64 {
-	return acc.Sequence
-}
-
-// SetSequence - Implements sdk.Account.
-func (acc *SubKeyAccount) SetSequence(seq uint64) error {
-	acc.Sequence = seq
-	return nil
-}
-
-// SpendableCoins returns the total set of spendable coins. For a base account,
-// this is simply the base coins.
-func (acc *SubKeyAccount) SpendableCoins(_ time.Time) sdk.Coins {
-	return acc.GetCoins()
-}
-
-// convert SubKeyAccount to SubKeyAccount
-func (acc *SubKeyAccount) ToSubKeyAcc() SubKeyAccount {
-    return *acc
-}
-
-// convert BaseAccount to SubKeyAccount
-func (acc *BaseAccount) ToSubKeyAcc() SubKeyAccount {
-    return SubKeyAccount{
-        Address:        acc.Address,
-        Coins:          acc.Coins,
-        PubKey:         acc.PubKey,
-        AccountNumber:  acc.AccountNumber,
-        Sequence:       acc.Sequence,
-    }
-}
-
 // NewKeyHandler returns a handler for SubKeyAccount messages
 func NewHandler(ak AccountKeeper) sdk.Handler {
     return func(ctx sdk.Context, msg sdk.Msg) sdk.Result {
@@ -688,7 +569,7 @@ func NewHandler(ak AccountKeeper) sdk.Handler {
 // Handle a message to set name
 func handleMsgAddSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgAddSubKey) sdk.Result {
     acc := ak.GetAccount(ctx,msg.Address)
-    acc2,b := acc.(*SubKeyAccount)
+    acc2,b := acc.(*BaseAccount)
     if b {
         acc2.SubKeys = append(acc2.SubKeys, SubKeyMetadata{
             PubKey:              msg.PubKey,
@@ -711,7 +592,7 @@ func handleMsgUpdateSubKeyAllowance(ctx sdk.Context, ak AccountKeeper, msg MsgUp
         return sdk.ErrUnauthorized("Main key allowance cannot be updated").Result()
     }
     acc := ak.GetAccount(ctx,msg.Address)
-		acc2,b := acc.(*SubKeyAccount)
+		acc2,b := acc.(*BaseAccount)
     if b {
         acc2.SubKeys[msg.SubKeyIndex - 1].DailyFeeAllowance = msg.DailyFeeAllowance
         ak.SetAccount(ctx,acc2)
@@ -728,7 +609,7 @@ func handleMsgRevokeSubKey(ctx sdk.Context, ak AccountKeeper, msg MsgRevokeSubKe
         return sdk.ErrUnauthorized("Main key cannot be revoked").Result()
     }
     acc := ak.GetAccount(ctx,msg.Address)
-    acc2,b := acc.(*SubKeyAccount)
+    acc2,b := acc.(*BaseAccount)
     if b {
         acc2.SubKeys[msg.SubKeyIndex - 1].Revoked = true
         ak.SetAccount(ctx,acc2)
