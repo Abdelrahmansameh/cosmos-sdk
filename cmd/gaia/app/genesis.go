@@ -13,6 +13,8 @@ import (
 
 	tmtypes "github.com/tendermint/tendermint/types"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
@@ -81,6 +83,8 @@ type GenesisAccount struct {
 	Coins         sdk.Coins      `json:"coins"`
 	Sequence      uint64         `json:"sequence_number"`
 	AccountNumber uint64         `json:"account_number"`
+    PubKey        crypto.PubKey  `json" "public_key"`
+    SubKeys       []auth.SubKeyMetadata  `json:"subkeys"`
 
 	// vesting account fields
 	OriginalVesting  sdk.Coins `json:"original_vesting"`  // total vesting coins upon initialization
@@ -90,14 +94,14 @@ type GenesisAccount struct {
 	EndTime          int64     `json:"end_time"`          // vesting end time (UNIX Epoch time)
 }
 
-func NewGenesisAccount(acc *auth.SubKeyAccount) GenesisAccount {
+func NewGenesisAccount(acc *auth.BaseAccount) GenesisAccount {
 	return GenesisAccount{
 		Address:       acc.Address,
 		Coins:         acc.Coins,
 		AccountNumber: acc.AccountNumber,
 		Sequence:      acc.Sequence,
         PubKey:        acc.PubKey,
-        SubKeys:       acc.SubKeys
+        SubKeys:       acc.SubKeys,
 	}
 }
 
@@ -123,7 +127,7 @@ func NewGenesisAccountI(acc auth.Account) GenesisAccount {
 
 // convert GenesisAccount to auth.Sub
 func (ga *GenesisAccount) ToAccount() auth.Account {
-	bacc := &auth.SubKeyAccount{
+	bacc := &auth.BaseAccount{
 		Address:       ga.Address,
 		Coins:         ga.Coins.Sort(),
 		AccountNumber: ga.AccountNumber,
@@ -132,28 +136,28 @@ func (ga *GenesisAccount) ToAccount() auth.Account {
         SubKeys:       ga.SubKeys,
 	}
 
-	if !ga.OriginalVesting.IsZero() {
-		baseVestingAcc := &auth.BaseVestingAccount{
-			BaseAccount:      bacc,
-			OriginalVesting:  ga.OriginalVesting,
-			DelegatedFree:    ga.DelegatedFree,
-			DelegatedVesting: ga.DelegatedVesting,
-			EndTime:          ga.EndTime,
-		}
+    if !ga.OriginalVesting.IsZero() {
+        baseVestingAcc := &auth.BaseVestingAccount{
+            BaseAccount:      bacc,
+            OriginalVesting:  ga.OriginalVesting,
+            DelegatedFree:    ga.DelegatedFree,
+            DelegatedVesting: ga.DelegatedVesting,
+            EndTime:          ga.EndTime,
+        }
 
-		if ga.StartTime != 0 && ga.EndTime != 0 {
-			return &auth.ContinuousVestingAccount{
-				BaseVestingAccount: baseVestingAcc,
-				StartTime:          ga.StartTime,
-			}
-		} else if ga.EndTime != 0 {
-			return &auth.DelayedVestingAccount{
-				BaseVestingAccount: baseVestingAcc,
-			}
-		} else {
-			panic(fmt.Sprintf("invalid genesis vesting account: %+v", ga))
-		}
-	}
+        if ga.StartTime != 0 && ga.EndTime != 0 {
+            return &auth.ContinuousVestingAccount{
+                BaseVestingAccount: baseVestingAcc,
+                StartTime:          ga.StartTime,
+            }
+        } else if ga.EndTime != 0 {
+            return &auth.DelayedVestingAccount{
+                BaseVestingAccount: baseVestingAcc,
+            }
+        } else {
+            panic(fmt.Sprintf("invalid genesis vesting account: %+v", ga))
+        }
+    }
 
 	return bacc
 }
@@ -408,7 +412,7 @@ func CollectStdTxs(cdc *codec.Codec, moniker string, genTxsDir string, genDoc tm
 }
 
 func NewDefaultGenesisAccount(addr sdk.AccAddress) GenesisAccount {
-	accAuth := auth.NewSubKeyAccountWithAddress(addr)
+	accAuth := auth.NewBaseAccountWithAddress(addr)
 	coins := sdk.Coins{
 		sdk.NewCoin("footoken", sdk.NewInt(1000)),
 		sdk.NewCoin(defaultBondDenom, freeTokensPerAcc),

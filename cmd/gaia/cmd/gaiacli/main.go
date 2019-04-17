@@ -140,6 +140,15 @@ func queryCmd(cdc *amino.Codec, mc []sdk.ModuleClients) *cobra.Command {
 	return queryCmd
 }
 
+//func addSubKeyCmd(cdc *amino.Codec, mc []sdk.ModuleClients) *cobra.Command {
+//    cmd := &cobra.Command{
+//        Use: "addSubKey"
+//        Short: "add subkeys"
+//    }
+
+//    return cmd
+//}
+
 func txCmd(cdc *amino.Codec, mc []sdk.ModuleClients) *cobra.Command {
 	txCmd := &cobra.Command{
 		Use:   "tx",

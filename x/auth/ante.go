@@ -116,7 +116,7 @@ func NewAnteHandler(ak AccountKeeper, fck FeeCollectionKeeper) sdk.AnteHandler {
                 return newCtx, res, true
             }
 
-			acc0,b := signerAccs[0].(*SubKeyAccount)
+			acc0,b := signerAccs[0].(*BaseAccount)
 			msgs := stdTx.Msgs
             if b {
                 flag := false
@@ -316,7 +316,7 @@ func ProcessPubKey(acc Account, sig StdSignature, simulate bool) (crypto.PubKey,
 		}
 		return pubKey, sdk.Result{}
 	} else {
-        acc2,b := acc.(*SubKeyAccount)
+        acc2,b := acc.(*BaseAccount)
 
         if !b {
             return simSecp256k1Pubkey, sdk.ErrUnauthorized("Wrong account type, upgrade to latest release.").Result()
