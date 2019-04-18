@@ -259,7 +259,7 @@ func RemoveOld(ctx sdk.Context, accountKeeper AccountKeeper) {
 		var transactionTime (*time.Time)
 		_ = transactionTime.UnmarshalBinary(it.Key())
 		acc := accountKeeper.GetAccount(ctx, fee.Address)
-		acc2, b := acc.(*SubKeyAccount)
+		acc2, b := acc.(*BaseAccount)
 		if b{
 			if fee.SubKeyIndex > 0 && tmin.After( *transactionTime) {
 				acc2.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed = acc2.SubKeys[fee.SubKeyIndex - 1].DailyFeeUsed.Sub(fee.FeeSpent)

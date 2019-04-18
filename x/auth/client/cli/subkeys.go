@@ -1,11 +1,7 @@
 package cli
 
 import (
-	"fmt"
-
-    "github.com/cosmos/cosmos-sdk/client/context"
     "github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/spf13/cobra"
 )
 
@@ -34,17 +30,17 @@ func GetCmdShowSubKey(cdc *codec.Codec) *cobra.Command {
     }
 }
 
-func GetCmdRevokeSubKey(cdc *codec.Codec) *cobra.Command {
-    return &cobra.Command{
-        Use: "revoke [account] [subkeyindex]",
-        Short: "revokes subkey"
-        Args: cobra.ValidArgs(2),
-        RunE: func(cmd *cobra.Command, args []string) error {
-            // check not revoked
-            // revokeit
-            // success
-			return nil
-		},
-    }
-}
+//func GetCmdRevokeSubKey(cdc *codec.Codec) *cobra.Command {
+//    return &cobra.Command{
+//        Use: "revoke [account] [subkeyindex]",
+//        Short: "revokes subkey",
+//        Args: cobra.ValidArgs(2),
+//        RunE: func(cmd *cobra.Command, args []string) error {
+//             check not revoked
+//             revokeit
+//             success
+//            return nil
+//        },
+//    }
+//}
 
